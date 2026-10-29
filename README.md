@@ -1,1 +1,1 @@
-# soc
+# NDHU CSIE soc design
