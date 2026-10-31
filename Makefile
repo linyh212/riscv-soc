@@ -9,35 +9,39 @@ TEST_DIR     := $(SOC_DIR)/firmware/isa_tests
 BUILD_DIR    := build
 
 TEST_BIN     := $(TEST_DIR)/test.bin
-TOP_MODULE   := inst_fetch
+TOP_MODULE   := test_top
 
 VERILATOR    := verilator
-VFLAGS       := -Wall --cc --exe --build -I$(RTL_DIR)/core -I$(RTL_DIR)/memory --trace
+# 加上 -Wno-fatal 忽略預留訊號的 Lint 警告
+VFLAGS       := -Wall -Wno-fatal --cc --exe --build -I$(RTL_DIR)/core -I$(RTL_DIR)/memory --trace
 
 .PHONY: all sim wave clean
 
 all: sim
 
-# 1. 呼叫子目錄 Makefile 編譯 test.S 產生 test.bin
 $(TEST_BIN):
 	$(MAKE) -C $(TEST_DIR)
 
-# 2. 執行 Verilator 建立 C++ 模型並跑模擬
 sim: $(TEST_BIN)
 	mkdir -p $(BUILD_DIR)
 	$(VERILATOR) $(VFLAGS) \
 		--Mdir $(BUILD_DIR) \
 		$(SIM_DIR)/testbench.cpp $(SIM_DIR)/sim_mem.cpp \
-		$(RTL_DIR)/core/defines.v $(RTL_DIR)/core/pc_reg.v \
-		$(RTL_DIR)/memory/rom.v $(RTL_DIR)/core/inst_fetch.v \
+		$(RTL_DIR)/core/defines.v \
+		$(RTL_DIR)/core/pc_reg.v \
+		$(RTL_DIR)/core/if_id.v \
+		$(RTL_DIR)/core/regfile.v \
+		$(RTL_DIR)/core/id_type_i.v \
+		$(RTL_DIR)/core/id.v \
+		$(RTL_DIR)/core/id_exe.v \
+		$(RTL_DIR)/memory/rom.v \
+		$(RTL_DIR)/core/test_top.v \
 		--top-module $(TOP_MODULE)
 	./$(BUILD_DIR)/V$(TOP_MODULE) $(TEST_BIN)
 
-# 3. 使用 GTKWave 檢視波形
 wave: sim
 	gtkwave wave.vcd &
 
-# 4. 清除產生檔案
 clean:
 	if [ -f $(TEST_DIR)/Makefile ]; then $(MAKE) -C $(TEST_DIR) clean; fi
 	rm -rf $(BUILD_DIR) wave.vcd

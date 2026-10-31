@@ -2,7 +2,7 @@
 .global _start
 
 _start:
-    ori x5, x4, 2    # Mechanical code expected: 00226293
-    ori x5, x4, 3    # Mechanical code expected: 00326293
-    ori x5, x4, 4    # Mechanical code expected: 00426293
-    ori x5, x4, 5    # Mechanical code expected: 00526293
+    # ori x5, x3, -2
+    # Machine Code : 0xffe1e293
+    # imm = -2 (0xffe / 12-bit signed), rs1 = x3 (00011), funct3 = ori (110), rd = x5 (00101), opcode = 0010011
+    ori x5, x3, -2
