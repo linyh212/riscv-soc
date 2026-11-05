@@ -8,7 +8,7 @@
 #include "verilated.h"
 #include "verilated_vcd_c.h"
 
-#define MAX_SIM_CYCLE 20
+#define MAX_SIM_CYCLE 35
 vluint64_t main_time = 0;
 
 using namespace std;

@@ -29,6 +29,7 @@ module id (
 );
 /* verilator lint_on UNUSEDSIGNAL */
     wire[6:0] opcode = inst_i[6:0];
+
     wire[`RADDR_WIDTH-1:0] i_reg1_raddr_o;
     wire[`RADDR_WIDTH-1:0] i_reg2_raddr_o;
     wire i_reg1_re_o;
@@ -37,6 +38,15 @@ module id (
     wire[`RDATA_WIDTH-1:0] i_op2_o;
     wire[`RADDR_WIDTH-1:0] i_reg_waddr_o;
     wire i_reg_we_o;
+
+    wire[`RADDR_WIDTH-1:0] r_reg1_raddr_o;
+    wire[`RADDR_WIDTH-1:0] r_reg2_raddr_o;
+    wire r_reg1_re_o;
+    wire r_reg2_re_o;
+    wire[`RDATA_WIDTH-1:0] r_op1_o;
+    wire[`RDATA_WIDTH-1:0] r_op2_o;
+    wire[`RADDR_WIDTH-1:0] r_reg_waddr_o;
+    wire r_reg_we_o;
 
     reg[`RDATA_WIDTH-1:0] op1_o_final;
     reg[`RDATA_WIDTH-1:0] op2_o_final;
@@ -53,6 +63,19 @@ module id (
         .op2_o (i_op2_o),
         .reg_we_o (i_reg_we_o),
         .reg_waddr_o (i_reg_waddr_o)
+    );
+    id_type_r INST_TYPE_R(
+        .inst_i (inst_i),
+        .reg1_rdata_i (reg1_rdata_i),
+        .reg2_rdata_i (reg2_rdata_i),
+        .reg1_raddr_o (r_reg1_raddr_o),
+        .reg2_raddr_o (r_reg2_raddr_o),
+        .reg1_re_o (r_reg1_re_o),
+        .reg2_re_o (r_reg2_re_o),
+        .op1_o (r_op1_o),
+        .op2_o (r_op2_o),
+        .reg_we_o (r_reg_we_o),
+        .reg_waddr_o (r_reg_waddr_o)
     );
     always @(*) begin
         if (rst_i == 1'b1) begin
@@ -86,7 +109,18 @@ module id (
                     op2_o_final = i_op2_o;
                     reg_we_o = i_reg_we_o;
                     reg_waddr_o = i_reg_waddr_o;
-                end 
+                end
+                `INST_TYPE_R_M: begin
+                    inst_o = inst_i;
+                    reg1_raddr_o = r_reg1_raddr_o;
+                    reg2_raddr_o = r_reg2_raddr_o;
+                    reg1_re_o = r_reg1_re_o;
+                    reg2_re_o = r_reg2_re_o;
+                    op1_o_final = r_op1_o;
+                    op2_o_final = r_op2_o;
+                    reg_we_o = r_reg_we_o;
+                    reg_waddr_o = r_reg_waddr_o;
+                end
                 default: begin
                 end
             endcase
