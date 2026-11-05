@@ -5,14 +5,12 @@
 #include <iostream>
 #include "Vtest_top.h"
 #include "Vtest_top_rom.h"
+#include "Vtest_top_regfile.h"
 
 void sim_mem_write(Vtest_top_rom* rom, uint32_t addr, size_t length, const void* bytes) {
     const uint8_t* p = reinterpret_cast<const uint8_t*>(bytes);
-    for (size_t i = 0; i < length; i += 4) {
-        rom->writeByte(addr + i,     p[i]); // 最高位元組 [31:24]
-        rom->writeByte(addr + i + 1, p[i + 1]);
-        rom->writeByte(addr + i + 2, p[i + 2]);
-        rom->writeByte(addr + i + 3, p[i + 3]); // 最低位元組 [7:0]
+    for (size_t i = 0; i < length; i++) {
+        rom->writeByte(addr + i, p[i]);
     }
 }
 
@@ -30,9 +28,12 @@ void sim_mem_load_bin(Vtest_top_rom* rom, std::string fn) {
 
     std::cout << "Successfully loaded firmware (" << fn << "), size: " << f_length << " bytes." << std::endl;
 
-    for (int i = 0; i < f_length; i += 4) {
-        sim_mem_write(rom, i, 4, reinterpret_cast<uint8_t*>(buf + i));
-    }
-
+    sim_mem_write(rom, 0, static_cast<size_t>(f_length), buf);
     delete[] buf;
+}
+
+uint32_t sim_regs_read(Vtest_top_regfile* regs, uint32_t addr) {
+    uint32_t v;
+    regs->readRegister(addr, v);
+    return v;
 }

@@ -5,6 +5,10 @@ module regfile (
     input wire clk_i,
     input wire rst_i,
     
+    input wire we_i,
+    input wire[`RADDR_WIDTH-1:0] waddr_i,
+    input wire[`RDATA_WIDTH-1:0] wdata_i,
+
     input wire re1_i,
     input wire[`RADDR_WIDTH-1:0] raddr1_i,
     output reg[`RDATA_WIDTH-1:0] rdata1_o,
@@ -19,6 +23,13 @@ module regfile (
     initial begin
         for(i = 0; i < `RNUM; i = i + 1)
             regs[i] = `ZERO;
+    end
+    always @(posedge clk_i) begin
+        if(rst_i == 1'b0) begin
+            if((we_i == `WRITE_ENABLE) && (waddr_i != `ZERO_REG)) begin
+                regs[waddr_i] <= wdata_i;
+            end
+        end
     end
     always @(*) begin
         if(raddr1_i == `ZERO_REG) begin
@@ -38,4 +49,12 @@ module regfile (
             rdata2_o = `ZERO;
         end
     end
+    task readRegister;
+        /*verilator public*/
+        input [4:0] raddr;
+        output integer val;
+        begin
+            val = regs[raddr];
+        end
+    endtask
 endmodule
