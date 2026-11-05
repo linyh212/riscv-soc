@@ -4,16 +4,17 @@
 #include "Vtest_top.h"
 #include "Vtest_top_test_top.h"
 #include "Vtest_top_rom.h"
+#include "Vtest_top_ram.h"
 #include "Vtest_top_regfile.h"
 #include "verilated.h"
 #include "verilated_vcd_c.h"
 
-#define MAX_SIM_CYCLE 35
+#define MAX_SIM_CYCLE 100
 vluint64_t main_time = 0;
 
 using namespace std;
 
-void sim_mem_load_bin(Vtest_top_rom* rom, string filename);
+void sim_mem_load_bin(Vtest_top_rom* rom, Vtest_top_ram* ram, string filename);
 uint32_t sim_regs_read(Vtest_top_regfile* regs, uint32_t addr);
 
 double sc_time_stamp() {
@@ -47,7 +48,7 @@ int main(int argc, char **argv) {
     top->trace(tfp, 0);
     tfp->open("wave.vcd");
 
-    sim_mem_load_bin(top->test_top->rom0, string(argv[1]));
+    sim_mem_load_bin(top->test_top->rom0, top->test_top->ram0, string(argv[1]));
 
     // Reset 階段
     top->rst_i = 1;

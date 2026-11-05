@@ -3,6 +3,7 @@ GTKWAVE  = gtkwave
 
 # RTL 原始碼搜尋路徑
 V_SRC    = soc/rtl/core/test_top.v
+V_SRC   += soc/rtl/core/pipe_crtl.v
 V_SRC   += $(wildcard soc/rtl/core/if/*.v)
 V_SRC   += $(wildcard soc/rtl/core/id/*.v)
 V_SRC   += $(wildcard soc/rtl/core/exe/*.v)

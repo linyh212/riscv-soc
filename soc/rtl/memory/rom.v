@@ -3,6 +3,7 @@
 module rom (
     input wire clk_i,
     input wire ce_i,
+    input wire stall_i,
     /* verilator lint_off UNUSEDSIGNAL */
     input wire[`ADDR_WIDTH-1:0] addr_i,
     /* verilator lint_on UNUSEDSIGNAL */
@@ -12,7 +13,8 @@ module rom (
     wire[`PART_ADDR_WIDTH-1:0] addr4;
     assign addr4 = {addr_i[`PART_ADDR_WIDTH-1:2], 2'b00};
     always @(posedge clk_i) begin
-        if(ce_i == 1'b0) begin
+        if(stall_i == 1'b1) begin
+        end else if(ce_i == 1'b0) begin
             inst_o <= 32'h0;
         end else begin
             inst_o <= {mem[addr4+3], mem[addr4+2], mem[addr4+1], mem[addr4]};

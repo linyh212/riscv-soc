@@ -2,19 +2,29 @@
 .global _start
 
 _start:
-    # 1. 準備基礎數據 (使用 Type-I ori 寫入暫存器)
-    ori   x1, x0, 20       # x1 = 20
-    ori   x2, x0, 5        # x2 = 5
-    ori   x3, x0, -10      # x3 = -10 (0xFFFFFFF6)
+    # 1. 準備基礎數據
+    li  x1, 0x12345678
+    li  x2, 0xABCDEF99
+    la  x3, _array
 
-    # 2. 測試 R-Type 指令 (兼測 Data Forwarding 衝突處置)
-    add   x4, x1, x2       # x4  = 20 + 5 = 25 (0x19)
-    sub   x5, x1, x2       # x5  = 20 - 5 = 15 (0x0F)
-    sll   x6, x1, x2       # x6  = 20 << 5 = 640 (0x280)
-    slt   x7, x3, x1       # x7  = (-10 < 20) ? 1 : 0 -> 1
-    sltu  x8, x3, x1       # x8  = (0xFFFFFFF6 < 20) ? 1 : 0 -> 0 (unsigned 比較)
-    xor   x9, x1, x2       # x9  = 20 ^ 5 = 17 (0x11)
-    srl   x10, x1, x2      # x10 = 20 >> 5 = 0
-    sra   x11, x3, x2      # x11 = -10 >>> 5 = -1 (0xFFFFFFFF)
-    or    x12, x1, x2      # x12 = 20 | 5 = 21 (0x15)
-    and   x13, x1, x2      # x13 = 20 & 5 = 4  (0x04)
+    # 2. 測試 Store 指令 (SW, SH, SB)
+    sw  x1, 0(x3)            # M[_array + 0] = 0x12345678
+    sh  x2, 4(x3)            # M[_array + 4] = 0x----EF99
+    sb  x1, 6(x3)            # M[_array + 6] = 0x--78----
+
+    # 3. 測試 Load 指令 (LW, LH, LHU, LB, LBU) 及其擴充行為
+    lw  x4, 0(x3)            # x4  = 0x12345678
+    lh  x5, 4(x3)            # x5  = 0xFFFFEF99 (Sign-extended)
+    lhu x6, 4(x3)            # x6  = 0x0000EF99 (Zero-extended)
+    lb  x7, 6(x3)            # x7  = 0x00000078 (Sign-extended, MSB=0)
+    lbu x8, 4(x3)            # x8  = 0x00000099 (Zero-extended)
+
+    # 4. Load-Use Hazard 驗證 (緊接 Load 使用暫存器)
+    lh  x9, 0(x3)            # x9  = 0x5678
+    add x10, x9, x1          # 測試 Pipeline 是否自動完成 1 Cycle Stall
+
+_array:
+    .word 0x00000000
+    .word 0x00000000
+
+    .end

@@ -11,12 +11,22 @@ module exe (
     /* verilator lint_on UNUSEDSIGNAL */
     output reg[`RADDR_WIDTH-1:0] reg_waddr_o,
     output reg reg_we_o,
-    output reg[`RDATA_WIDTH-1:0] reg_wdata_o
+    output reg[`RDATA_WIDTH-1:0] reg_wdata_o,
+    output reg[`ADDR_WIDTH-1:0] mem_addr_o,
+    output reg mem_we_o,
+    output reg[`DATA_WIDTH-1:0] mem_data_o,
+    output reg[3:0] mem_op_o
 );
     wire[6:0] opcode = inst_i[6:0];
     wire[2:0] funct3 = inst_i[14:12];
     wire[`RDATA_WIDTH-1:0] r_reg_wdata_o;
     wire r_reg_we_o;
+    wire[`RDATA_WIDTH-1:0] sl_reg_wdata_o;
+    wire sl_reg_we_o;
+    wire[`ADDR_WIDTH-1:0] sl_mem_addr_o;
+    wire[`DATA_WIDTH-1:0] sl_mem_data_o;
+    wire sl_mem_we_o;
+    wire[3:0] sl_mem_op_o;
     exe_type_r exe_type_r0(
         .rst_i(rst_i),
         .op1_i(op1_i),
@@ -25,16 +35,36 @@ module exe (
         .reg_wdata_o(r_reg_wdata_o),
         .reg_we_o(r_reg_we_o)
     );
+    exe_type_s_l exe_type_s_l0(
+        .rst_i(rst_i),
+        .op1_i(op1_i),
+        .op2_i(op2_i),
+        .inst_i(inst_i),
+        .reg_wdata_o(sl_reg_wdata_o),
+        .reg_we_o(sl_reg_we_o),
+        .mem_addr_o(sl_mem_addr_o),
+        .mem_data_o(sl_mem_data_o),
+        .mem_we_o(sl_mem_we_o),
+        .mem_op_o(sl_mem_op_o)
+    );
     always @(*) begin
+        reg_waddr_o = `ZERO_REG;
+        reg_we_o = `WRITE_DISABLE;
+        reg_wdata_o = `ZERO;
+        mem_addr_o = `ZERO;
+        mem_we_o = `WRITE_DISABLE;
+        mem_data_o = `ZERO;
+        mem_op_o = `MEM_NOP;
         if(rst_i == 1'b1) begin
-            reg_waddr_o = `ZERO_REG;
-            reg_we_o = `WRITE_DISABLE;
-            reg_wdata_o = `ZERO;
         end else begin
-            reg_waddr_o = reg_waddr_i;
             case (opcode)
                 `INST_TYPE_I: begin
+                    reg_waddr_o = reg_waddr_i;
                     case (funct3)
+                        `INST_ADDI: begin
+                            reg_we_o = reg_we_i;
+                            reg_wdata_o = op1_i + op2_i;
+                        end
                         `INST_ORI: begin
                             reg_we_o = reg_we_i;
                             reg_wdata_o = op1_i | op2_i;
@@ -46,12 +76,25 @@ module exe (
                     endcase
                 end
                 `INST_TYPE_R_M: begin
+                    reg_waddr_o = reg_waddr_i;
                     reg_we_o = r_reg_we_o;
                     reg_wdata_o = r_reg_wdata_o;
                 end
+                `INST_TYPE_LUI, `INST_TYPE_AUIPC: begin
+                    reg_waddr_o = reg_waddr_i;
+                    reg_we_o = reg_we_i;
+                    reg_wdata_o = op1_i + op2_i;
+                end
+                `INST_TYPE_S, `INST_TYPE_L: begin
+                    reg_waddr_o = reg_waddr_i;
+                    reg_we_o = sl_reg_we_o;
+                    reg_wdata_o = sl_reg_wdata_o;
+                    mem_addr_o = sl_mem_addr_o;
+                    mem_we_o = sl_mem_we_o;
+                    mem_data_o = sl_mem_data_o;
+                    mem_op_o = sl_mem_op_o;
+                end
                 default: begin
-                    reg_we_o = `WRITE_DISABLE;
-                    reg_wdata_o = `ZERO;
                 end
             endcase
         end

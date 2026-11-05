@@ -16,6 +16,9 @@ module id (
     input wire[`RDATA_WIDTH-1:0] mem_reg_wdata_i,
     input wire mem_reg_we_i,
 
+    input wire[`RADDR_WIDTH-1:0] exe_rd_i,
+    input wire pre_inst_is_load_i,
+
     output reg[`RADDR_WIDTH-1:0] reg1_raddr_o,
     output reg reg1_re_o,
     output reg[`RADDR_WIDTH-1:0] reg2_raddr_o,
@@ -25,10 +28,22 @@ module id (
     output reg[`RDATA_WIDTH-1:0] op1_o,
     output reg[`RDATA_WIDTH-1:0] op2_o,
     output reg reg_we_o,
-    output reg[`RADDR_WIDTH-1:0] reg_waddr_o
+    output reg[`RADDR_WIDTH-1:0] reg_waddr_o,
+
+    output reg stallreq_o
 );
 /* verilator lint_on UNUSEDSIGNAL */
     wire[6:0] opcode = inst_i[6:0];
+    wire[4:0] rd = inst_i[11:7];
+    wire[4:0] rs1 = inst_i[19:15];
+    wire[4:0] rs2 = inst_i[24:20];
+
+    // Load-Use Hazard
+    wire is_load_hazard = pre_inst_is_load_i && (exe_rd_i != `ZERO_REG) && ((reg1_re_o && (rs1 == exe_rd_i)) || (reg2_re_o && (rs2 == exe_rd_i)));
+    always @(*) begin
+        if(is_load_hazard) stallreq_o = `STOP;
+        else stallreq_o = `NOSTOP;
+    end
 
     wire[`RADDR_WIDTH-1:0] i_reg1_raddr_o;
     wire[`RADDR_WIDTH-1:0] i_reg2_raddr_o;
@@ -110,6 +125,24 @@ module id (
                     reg_we_o = i_reg_we_o;
                     reg_waddr_o = i_reg_waddr_o;
                 end
+                `INST_TYPE_S: begin
+                    inst_o = inst_i;
+                    reg1_raddr_o = rs1;
+                    reg2_raddr_o = rs2;
+                    reg1_re_o = `READ_ENABLE;
+                    reg2_re_o = `READ_ENABLE;
+                    op1_o_final = reg1_rdata_i;
+                    op2_o_final = reg2_rdata_i;
+                end
+                `INST_TYPE_L: begin
+                    inst_o = inst_i;
+                    reg1_raddr_o = rs1;
+                    reg1_re_o = `READ_ENABLE;
+                    op1_o_final = reg1_rdata_i;
+                    op2_o_final = {{20{inst_i[31]}}, inst_i[31:20]};
+                    reg_we_o = `WRITE_ENABLE;
+                    reg_waddr_o = rd;
+                end
                 `INST_TYPE_R_M: begin
                     inst_o = inst_i;
                     reg1_raddr_o = r_reg1_raddr_o;
@@ -121,12 +154,43 @@ module id (
                     reg_we_o = r_reg_we_o;
                     reg_waddr_o = r_reg_waddr_o;
                 end
+                `INST_TYPE_LUI: begin
+                    inst_o = inst_i;
+                    reg1_raddr_o = `ZERO_REG;
+                    reg2_raddr_o = `ZERO_REG;
+                    reg1_re_o = `READ_DISABLE;
+                    reg2_re_o = `READ_DISABLE;
+                    op1_o_final = {inst_i[31:12], 12'b0};
+                    op2_o_final = 32'h0;
+                    reg_we_o = `WRITE_ENABLE;
+                    reg_waddr_o = rd;
+                end
+                `INST_TYPE_AUIPC: begin
+                    inst_o = inst_i;
+                    reg1_raddr_o = `ZERO_REG;
+                    reg2_raddr_o = `ZERO_REG;
+                    reg1_re_o = `READ_DISABLE;
+                    reg2_re_o = `READ_DISABLE;
+                    op1_o_final = inst_addr_i;
+                    op2_o_final = {inst_i[31:12], 12'b0};
+                    reg_we_o = `WRITE_ENABLE;
+                    reg_waddr_o = rd;
+                end
                 default: begin
+                    inst_o = `NOP;
+                    reg1_raddr_o = `ZERO_REG;
+                    reg2_raddr_o = `ZERO_REG;
+                    reg1_re_o = `READ_DISABLE;
+                    reg2_re_o = `READ_DISABLE;
+                    reg_we_o = `WRITE_DISABLE;
+                    reg_waddr_o = `ZERO_REG;
+                    op1_o_final = `ZERO;
+                    op2_o_final = `ZERO;
                 end
             endcase
         end
     end
-    // Data Forwarding (op1_o)
+    // Data Forwarding
     always @(*) begin
         if(rst_i == 1'b1) begin
             op1_o = `ZERO;
@@ -138,7 +202,6 @@ module id (
             op1_o = op1_o_final;
         end
     end
-    // Data Forwarding (op2_o)
     always @(*) begin
         if(rst_i == 1'b1) begin
             op2_o = `ZERO;

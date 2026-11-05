@@ -3,6 +3,7 @@
 module pc_reg (
     input wire clk_i,
     input wire rst_i,
+    input wire stall_i,
     output reg[`ADDR_WIDTH-1:0] pc_o,
     output reg ce_o
 );
@@ -18,7 +19,7 @@ module pc_reg (
     always @(posedge clk_i) begin
         if(ce_o == 1'b0) begin
             pc_o <= PC_RESET;
-        end else begin
+        end else if(stall_i == 1'b0) begin
             pc_o <= pc_o + PC_INC;
         end
     end
