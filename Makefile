@@ -1,27 +1,45 @@
-VERILATOR = verilator
-TOP = test_top
+TOP      = test_top
+GTKWAVE  = gtkwave
 
-# 自動搜尋 soc/rtl 下所有子目錄的 Verilog 檔案
-V_SRC := $(shell find soc/rtl -name "*.v")
-SIM_SRC := $(wildcard soc/sim/*.cpp)
+# RTL 原始碼搜尋路徑
+V_SRC    = soc/rtl/core/test_top.v
+V_SRC   += $(wildcard soc/rtl/core/if/*.v)
+V_SRC   += $(wildcard soc/rtl/core/id/*.v)
+V_SRC   += $(wildcard soc/rtl/core/exe/*.v)
+V_SRC   += $(wildcard soc/rtl/core/mem/*.v)
+V_SRC   += $(wildcard soc/rtl/core/wb/*.v)
+V_SRC   += $(wildcard soc/rtl/memory/*.v)
 
-# 加入 include 搜尋路徑
-INC := -Isoc/rtl/include -Isoc/rtl/core -Isoc/rtl/if -Isoc/rtl/id -Isoc/rtl/exe -Isoc/rtl/mem -Isoc/rtl/wb -Isoc/rtl/memory
+# C++ Testbench 原始碼
+SIM_SRC  = $(wildcard soc/sim/*.cpp)
 
-.PHONY: all sim clean
+# Include 目錄
+INC      = -Isoc/rtl/include
 
-all: sim
+.PHONY: all run wave clean
 
-sim:
+all: run
+
+# 1. 編譯測試軟體 (test.bin)
+soc/firmware/isa_tests/test.bin:
 	$(MAKE) -C soc/firmware/isa_tests
+
+# 2. Verilator 建置
+build/V$(TOP).mk: $(V_SRC) $(SIM_SRC)
 	mkdir -p build
-	$(VERILATOR) -Wall -Wno-fatal --cc --exe --build \
-		$(INC) \
+	verilator -Wall -Wno-fatal --cc --exe --build \
+		$(INC) $(SIM_SRC) $(V_SRC) \
 		--Mdir build \
 		--trace \
-		$(SIM_SRC) $(V_SRC) \
 		--top-module $(TOP)
+
+# 3. 執行模擬
+run: soc/firmware/isa_tests/test.bin build/V$(TOP).mk
 	./build/V$(TOP) soc/firmware/isa_tests/test.bin
+
+# 4. 開啟 GTKWave 觀察波形
+wave: run
+	$(GTKWAVE) wave.vcd &
 
 clean:
 	if [ -f soc/firmware/isa_tests/Makefile ]; then $(MAKE) -C soc/firmware/isa_tests clean; fi

@@ -1,20 +1,17 @@
-CROSS_COMPILE ?= riscv64-unknown-elf-
-CC            := $(CROSS_COMPILE)gcc
-OBJCOPY       := $(CROSS_COMPILE)objcopy
-OBJDUMP       := $(CROSS_COMPILE)objdump
+CROSS_COMPILE = riscv64-unknown-elf-
+CFLAGS        = -nostdlib -fno-builtin -march=rv32ima -mabi=ilp32 -g -Wall
+CC            = $(CROSS_COMPILE)gcc
+OBJCOPY       = $(CROSS_COMPILE)objcopy
+OBJDUMP       = $(CROSS_COMPILE)objdump
 
-CFLAGS        := -nostdlib -fno-builtin -march=rv32ima -mabi=ilp32 -g -Wall
-
-.PHONY: all clean
-
+.DEFAULT_GOAL := all
 all: test.bin
 
-test.elf: test.S
-	$(CC) $(CFLAGS) $< -Ttext=0x00000000 -o $@
-	$(OBJDUMP) -S $@ > test.dis
+test.bin: test.S
+	$(CC) $(CFLAGS) test.S -Ttext=0x00000000 -o test.elf
+	$(OBJDUMP) -S test.elf > test.dis
+	$(OBJCOPY) -O binary test.elf test.bin
 
-test.bin: test.elf
-	$(OBJCOPY) -O binary $< $@
-
+.PHONY : clean
 clean:
-	rm -f *.o *.elf *.bin *.dis
+	rm -rf *.o *.bin *.elf *.dis
