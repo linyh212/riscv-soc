@@ -63,6 +63,15 @@ module id (
     wire[`RADDR_WIDTH-1:0] r_reg_waddr_o;
     wire r_reg_we_o;
 
+    wire[`RADDR_WIDTH-1:0] type_b_j_reg1_raddr_o;
+    wire type_b_j_reg1_re_o;
+    wire[`RADDR_WIDTH-1:0] type_b_j_reg2_raddr_o;
+    wire type_b_j_reg2_re_o;
+    wire[`RDATA_WIDTH-1:0] type_b_j_op1_o;
+    wire[`RDATA_WIDTH-1:0] type_b_j_op2_o;
+    wire[`RADDR_WIDTH-1:0] type_b_j_reg_waddr_o;
+    wire type_b_j_reg_we_o;
+
     reg[`RDATA_WIDTH-1:0] op1_o_final;
     reg[`RDATA_WIDTH-1:0] op2_o_final;
 
@@ -91,6 +100,20 @@ module id (
         .op2_o (r_op2_o),
         .reg_we_o (r_reg_we_o),
         .reg_waddr_o (r_reg_waddr_o)
+    );
+    id_type_b_j INST_TYPE_B_J(
+        .inst_i (inst_i),
+        .inst_addr_i (inst_addr_i),
+        .reg1_rdata_i (reg1_rdata_i),
+        .reg2_rdata_i (reg2_rdata_i),
+        .reg1_raddr_o (type_b_j_reg1_raddr_o),
+        .reg1_re_o (type_b_j_reg1_re_o),
+        .reg2_raddr_o (type_b_j_reg2_raddr_o),
+        .reg2_re_o (type_b_j_reg2_re_o),
+        .reg_we_o (type_b_j_reg_we_o),
+        .reg_waddr_o (type_b_j_reg_waddr_o),
+        .op1_o (type_b_j_op1_o),
+        .op2_o (type_b_j_op2_o)
     );
     always @(*) begin
         if (rst_i == 1'b1) begin
@@ -153,6 +176,17 @@ module id (
                     op2_o_final = r_op2_o;
                     reg_we_o = r_reg_we_o;
                     reg_waddr_o = r_reg_waddr_o;
+                end
+                `INST_TYPE_B, `INST_TYPE_JAL, `INST_TYPE_JALR: begin
+                    inst_o = inst_i;
+                    reg1_raddr_o = type_b_j_reg1_raddr_o;
+                    reg1_re_o = type_b_j_reg1_re_o;
+                    reg2_raddr_o = type_b_j_reg2_raddr_o;
+                    reg2_re_o = type_b_j_reg2_re_o;
+                    op1_o_final = type_b_j_op1_o;
+                    op2_o_final = type_b_j_op2_o;
+                    reg_we_o = type_b_j_reg_we_o;
+                    reg_waddr_o = type_b_j_reg_waddr_o;
                 end
                 `INST_TYPE_LUI: begin
                     inst_o = inst_i;

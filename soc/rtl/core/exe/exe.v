@@ -6,16 +6,19 @@ module exe (
     input wire[`RDATA_WIDTH-1:0] op2_i,
     input wire[`RADDR_WIDTH-1:0] reg_waddr_i,
     input wire reg_we_i,
-    /* verilator lint_off UNUSEDSIGNAL */
     input wire[`DATA_WIDTH-1:0] inst_i,
-    /* verilator lint_on UNUSEDSIGNAL */
+    input wire[`ADDR_WIDTH-1:0] inst_addr_i,
+
     output reg[`RADDR_WIDTH-1:0] reg_waddr_o,
     output reg reg_we_o,
     output reg[`RDATA_WIDTH-1:0] reg_wdata_o,
     output reg[`ADDR_WIDTH-1:0] mem_addr_o,
     output reg mem_we_o,
     output reg[`DATA_WIDTH-1:0] mem_data_o,
-    output reg[3:0] mem_op_o
+    output reg[3:0] mem_op_o,
+    output wire[`ADDR_WIDTH-1:0] jump_addr_o,
+    output wire jump_enable_o,
+    output wire stallreq_o
 );
     wire[6:0] opcode = inst_i[6:0];
     wire[2:0] funct3 = inst_i[14:12];
@@ -27,6 +30,9 @@ module exe (
     wire[`DATA_WIDTH-1:0] sl_mem_data_o;
     wire sl_mem_we_o;
     wire[3:0] sl_mem_op_o;
+
+    assign stallreq_o = 1'b0;
+    
     exe_type_r exe_type_r0(
         .rst_i(rst_i),
         .op1_i(op1_i),
@@ -46,6 +52,15 @@ module exe (
         .mem_data_o(sl_mem_data_o),
         .mem_we_o(sl_mem_we_o),
         .mem_op_o(sl_mem_op_o)
+    );
+    exe_type_b_j exe_type_b_j0(
+        .rst_i(rst_i),
+        .op1_i(op1_i),
+        .op2_i(op2_i),
+        .inst_i(inst_i),
+        .inst_addr_i(inst_addr_i),
+        .jump_addr_o(jump_addr_o),
+        .jump_enable_o(jump_enable_o)
     );
     always @(*) begin
         reg_waddr_o = `ZERO_REG;
@@ -84,6 +99,11 @@ module exe (
                     reg_waddr_o = reg_waddr_i;
                     reg_we_o = reg_we_i;
                     reg_wdata_o = op1_i + op2_i;
+                end
+                `INST_TYPE_JAL, `INST_TYPE_JALR: begin
+                    reg_waddr_o = reg_waddr_i;
+                    reg_we_o = reg_we_i;
+                    reg_wdata_o = inst_addr_i + 32'd4;
                 end
                 `INST_TYPE_S, `INST_TYPE_L: begin
                     reg_waddr_o = reg_waddr_i;

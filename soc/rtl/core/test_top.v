@@ -12,7 +12,7 @@ module test_top (
     // IF Stage
     wire[`ADDR_WIDTH-1:0] pc_wire;
     wire ce_wire;
-    wire[`ADDR_WIDTH-1:0] if_inst_addr_o;
+    reg[`ADDR_WIDTH-1:0] if_inst_addr_o;
     
     // IF/ID to ID
     wire[`ADDR_WIDTH-1:0] if_id_inst_addr_o;
@@ -32,6 +32,7 @@ module test_top (
 
     // ID/EXE to EXE
     wire[`DATA_WIDTH-1:0] id_exe_inst_o;
+    wire[`ADDR_WIDTH-1:0] id_exe_inst_addr_o;
     wire[`RDATA_WIDTH-1:0] id_exe_op1_o;
     wire[`RDATA_WIDTH-1:0] id_exe_op2_o;
     wire id_exe_reg_we_o;
@@ -77,15 +78,29 @@ module test_top (
     wire[`DATA_WIDTH-1:0] ram_data_i;
     wire ram_w_request_o;
 
-    // --- Output Assignments ---
+    wire ctrl_flush_jump_o;
+    wire[31:0] ctrl_new_pc_o;
+    wire[`ADDR_WIDTH-1:0] exe_jump_addr_o;
+    wire exe_jump_enable_o;
+    wire exe_stallreq_o;
+    wire[`ADDR_WIDTH-1:0] rom_addr_i = ctrl_flush_jump_o ? ctrl_new_pc_o : pc_wire;
+
     assign pc_o = pc_wire;
-    // ROM output is registered, so the visible instruction belongs to PC - 4.
-    assign if_inst_addr_o = pc_wire - 32'd4;
+    
+    always @(posedge clk_i) begin
+        if(rst_i == 1'b1) begin
+            if_inst_addr_o <= `ZERO;
+        end else if(crtl_stall_o[0] == `NOSTOP) begin
+            if_inst_addr_o <= rom_addr_i;
+        end
+    end
 
     pc_reg pc_reg0 (
         .clk_i(clk_i),
         .rst_i(rst_i),
         .stall_i(crtl_stall_o[0]),
+        .flush_jump_i(ctrl_flush_jump_o),
+        .new_pc_i(ctrl_new_pc_o),
         .pc_o(pc_wire),
         .ce_o(ce_wire)
     );
@@ -93,13 +108,14 @@ module test_top (
         .clk_i(clk_i),
         .ce_i(ce_wire),
         .stall_i(crtl_stall_o[0]),
-        .addr_i(pc_wire),
+        .addr_i(rom_addr_i),
         .inst_o(if_inst_o)
     );
     if_id if_id0 (
         .clk_i(clk_i),
         .rst_i(rst_i),
-        .stall_i(crtl_stall_o[1]),
+        .stall_i(crtl_stall_o[2:1]),
+        .flush_jump_i(ctrl_flush_jump_o),
         .inst_addr_i(if_inst_addr_o),
         .inst_i(if_inst_o),
         .inst_addr_o(if_id_inst_addr_o),
@@ -150,12 +166,15 @@ module test_top (
         .clk_i(clk_i),
         .rst_i(rst_i),
         .stall_i(crtl_stall_o[2]),
+        .flush_jump_i(ctrl_flush_jump_o),
         .inst_i(id_inst_o),
+        .inst_addr_i(if_id_inst_addr_o),
         .op1_i(id_op1_o),
         .op2_i(id_op2_o),
         .reg_we_i(id_reg_we_o),
         .reg_waddr_i(id_reg_waddr_o),
         .inst_o(id_exe_inst_o),
+        .inst_addr_o(id_exe_inst_addr_o),
         .op1_o(id_exe_op1_o),
         .op2_o(id_exe_op2_o),
         .reg_we_o(id_exe_reg_we_o),
@@ -168,13 +187,17 @@ module test_top (
         .reg_we_i(id_exe_reg_we_o),
         .reg_waddr_i(id_exe_reg_waddr_o),
         .inst_i(id_exe_inst_o),
+        .inst_addr_i(id_exe_inst_addr_o),
         .reg_waddr_o(exe_reg_waddr_o),
         .reg_we_o(exe_reg_we_o),
         .reg_wdata_o(exe_reg_wdata_o),
         .mem_addr_o(exe_mem_addr_o),
         .mem_we_o(exe_mem_we_o),
         .mem_data_o(exe_mem_data_o),
-        .mem_op_o(exe_mem_op_o)
+        .mem_op_o(exe_mem_op_o),
+        .jump_addr_o(exe_jump_addr_o),
+        .jump_enable_o(exe_jump_enable_o),
+        .stallreq_o(exe_stallreq_o)
     );
     exe_mem exe_mem0 (
         .clk_i(clk_i),
@@ -232,6 +255,11 @@ module test_top (
     pipe_crtl pipe_crtl0 (
         .rst_i(rst_i),
         .stallreq_from_id_i(id_stallreq_o),
-        .stall_o(crtl_stall_o)
+        .stallreq_from_exe_i(exe_stallreq_o),
+        .jump_enable_i(exe_jump_enable_o),
+        .jump_addr_i(exe_jump_addr_o),
+        .stall_o(crtl_stall_o),
+        .flush_jump_o(ctrl_flush_jump_o),
+        .new_pc_o(ctrl_new_pc_o)
     );
 endmodule
