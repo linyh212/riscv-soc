@@ -7,8 +7,13 @@ module test_top (
     output wire[`DATA_WIDTH-1:0] if_inst_o,
     output wire[`DATA_WIDTH-1:0] if_id_inst_o,
     output wire[`RDATA_WIDTH-1:0] id_op1_o,
-    output wire[`RDATA_WIDTH-1:0] id_op2_o
+    output wire[`RDATA_WIDTH-1:0] id_op2_o,
+    output wire halt_o
 );
+    // ISA test
+    wire mem_halt_o;
+    assign halt_o = mem_halt_o;
+
     // IF Stage
     wire[`ADDR_WIDTH-1:0] pc_wire;
     wire ce_wire;
@@ -232,7 +237,8 @@ module test_top (
         .ram_data_o(ram_data_o),
         .reg_waddr_o(mem_reg_waddr_o),
         .reg_we_o(mem_reg_we_o),
-        .reg_wdata_o(mem_reg_wdata_o)
+        .reg_wdata_o(mem_reg_wdata_o),
+        .halt_o(mem_halt_o)
     );
     ram ram0 (
         .clk_i(clk_i),

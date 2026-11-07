@@ -18,7 +18,7 @@ module regfile (
     output reg[`RDATA_WIDTH-1:0] rdata2_o
 );
 /* verilator lint_on UNUSEDSIGNAL */
-    reg[`RDATA_WIDTH-1:0] regs[0:`RNUM-1];
+    reg[`RDATA_WIDTH-1:0] regs[0:`RNUM-1] /* verilator public */;
     integer i;
     initial begin
         for(i = 0; i < `RNUM; i = i + 1)

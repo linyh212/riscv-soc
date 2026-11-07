@@ -23,10 +23,10 @@ module dpram #(
     wire[`RAM_ADDR_WIDTH-1:0] inst_addr = {pc_i[RAM_ADDR_WIDTH-1:2], 2'b00};
     always @(posedge clk_i) begin
         if((we_i == `WRITE_ENABLE) && (rst_i == 1'b0)) begin
-            mem[addr_i[`RAM_ADDR_WIDTH]] <= data_i[31:24];
-            mem[addr_i[`RAM_ADDR_WIDTH+1]] <= data_i[23:16];
-            mem[addr_i[`RAM_ADDR_WIDTH+2]] <= data_i[15:8];
-            mem[addr_i[`RAM_ADDR_WIDTH+3]] <= data_i[7:0];
+            mem[data_addr] <= data_i[7:0];
+            mem[data_addr+1] <= data_i[15:8];
+            mem[data_addr+2] <= data_i[23:16];
+            mem[data_addr+3] <= data_i[31:24];
         end
     end
     always @(*) begin
@@ -42,7 +42,7 @@ module dpram #(
         if(inst_ce_i == 1'b0 || rst_i == 1'b1) begin
             inst_o = `NOP;
         end else begin
-            inst_o = {mem[inst_i], mem[inst_i+1], mem[inst_i+2], mem[inst_i+3]};
+            inst_o = {mem[inst_addr+3], mem[inst_addr+2], mem[inst_addr+1], mem[inst_addr]};
         end
     end
 // synthesis translate_off
