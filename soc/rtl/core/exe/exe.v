@@ -1,6 +1,7 @@
 `include "defines.v"
 
 module exe (
+    input wire clk_i,
     input wire rst_i,
     input wire[`RDATA_WIDTH-1:0] op1_i,
     input wire[`RDATA_WIDTH-1:0] op2_i,
@@ -22,8 +23,13 @@ module exe (
 );
     wire[6:0] opcode = inst_i[6:0];
     wire[2:0] funct3 = inst_i[14:12];
+    
     wire[`RDATA_WIDTH-1:0] r_reg_wdata_o;
     wire r_reg_we_o;
+    wire[`RDATA_WIDTH-1:0] m_reg_wdata_o;
+    wire m_reg_we_o;
+    wire m_stall_o;
+
     wire[`RDATA_WIDTH-1:0] sl_reg_wdata_o;
     wire sl_reg_we_o;
     wire[`ADDR_WIDTH-1:0] sl_mem_addr_o;
@@ -31,7 +37,7 @@ module exe (
     wire sl_mem_we_o;
     wire[3:0] sl_mem_op_o;
 
-    assign stallreq_o = 1'b0;
+    assign stallreq_o = m_stall_o;
     
     exe_type_r exe_type_r0(
         .rst_i(rst_i),
@@ -61,6 +67,16 @@ module exe (
         .inst_addr_i(inst_addr_i),
         .jump_addr_o(jump_addr_o),
         .jump_enable_o(jump_enable_o)
+    );
+    exe_type_m exe_type_m0(
+        .clk_i(clk_i),
+        .rst_i(rst_i),
+        .op1_i(op1_i),
+        .op2_i(op2_i),
+        .inst_i(inst_i),
+        .stall_o(m_stall_o),
+        .reg_wdata_o(m_reg_wdata_o),
+        .reg_we_o(m_reg_we_o)
     );
     always @(*) begin
         reg_waddr_o = `ZERO_REG;
@@ -92,8 +108,12 @@ module exe (
                 end
                 `INST_TYPE_R_M: begin
                     reg_waddr_o = reg_waddr_i;
-                    reg_we_o = r_reg_we_o;
-                    reg_wdata_o = r_reg_wdata_o;
+                    mem_we_o = `WRITE_DISABLE;
+                    mem_addr_o = `ZERO;
+                    mem_data_o = `ZERO;
+                    mem_op_o = `MEM_NOP;
+                    reg_we_o = r_reg_we_o | m_reg_we_o;
+                    reg_wdata_o = r_reg_wdata_o | m_reg_wdata_o;
                 end
                 `INST_TYPE_LUI, `INST_TYPE_AUIPC: begin
                     reg_waddr_o = reg_waddr_i;

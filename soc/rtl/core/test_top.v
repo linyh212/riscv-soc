@@ -186,6 +186,7 @@ module test_top (
         .reg_waddr_o(id_exe_reg_waddr_o)
     );
     exe exe0 (
+        .clk_i(clk_i),
         .rst_i(rst_i),
         .op1_i(id_exe_op1_o),
         .op2_i(id_exe_op2_o),
