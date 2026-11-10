@@ -1,0 +1,63 @@
+`include "defines.v"
+
+module console #(
+    parameter string LogName = "./log/console.log",
+    parameter bit FlushOnChar = 1
+) (
+    input wire clk_i,
+    input wire rst_i,
+    input wire req_i,
+    input wire we_i,
+    /* verilator lint_off UNUSEDSIGNAL */
+    input wire[31:0] addr_i,
+    input wire[31:0] wdata_i,
+    /* verilator lint_on UNUSEDSIGNAL */
+    output reg halt_o
+);
+    localparam reg[7:0] CHAR_OUT_ADDR = 8'h4;
+    localparam reg[7:0] SIM_CTRL_ADDR = 8'h8;
+    wire[7:0] ctrl_addr;
+    reg[2:0] sim_finish;
+    integer log_fd;
+    initial begin
+        log_fd = $fopen(LogName, "w");
+    end
+    final begin
+        if(log_fd != 0) begin
+            $fclose(log_fd);
+        end
+    end
+    assign ctrl_addr = addr_i[7:0];
+    always @(posedge clk_i) begin
+        if(rst_i == 1'b1) begin
+            sim_finish <= 3'b000;
+        end else begin
+            if(req_i & we_i) begin
+                case (ctrl_addr)
+                    CHAR_OUT_ADDR: begin
+                        if(log_fd != 0) $fwrite(log_fd, "%c", wdata_i[7:0]);
+                        $write("%c", wdata_i[7:0]);
+                        if(FlushOnChar && log_fd != 0) begin
+                            $fflush(log_fd);
+                        end
+                    end
+                    SIM_CTRL_ADDR: begin
+                        if(wdata_i[0] && (sim_finish == 3'b000)) begin
+                            sim_finish <= 3'b001;
+                        end
+                    end
+                    default: begin
+                        
+                    end
+                endcase
+            end
+        end
+        if(sim_finish != 3'b000) begin
+            sim_finish <= sim_finish + 1'b1;
+        end
+        if(sim_finish >= 3'b010)
+            halt_o <= 1'b1;
+        else
+            halt_o <= 1'b0;
+    end
+endmodule

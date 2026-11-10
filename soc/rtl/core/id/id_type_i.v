@@ -31,7 +31,8 @@ module id_type_i (
         op1_o = `ZERO;
         op2_o = imm_i;
         case(funct3)
-            `INST_ADDI, `INST_ORI: begin
+            `INST_ADDI, `INST_SLTI, `INST_SLTIU, `INST_XORI, `INST_ORI, `INST_ANDI,
+            `INST_SLL, `INST_SR: begin
                 reg_we_o = `WRITE_ENABLE;
                 reg_waddr_o = rd;
                 reg1_re_o = `READ_ENABLE;

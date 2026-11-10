@@ -3,7 +3,7 @@
 module id_exe (
     input wire clk_i,
     input wire rst_i,
-    input wire stall_i,
+    input wire[3:2] stall_i,
     input wire flush_jump_i,
     input wire[`DATA_WIDTH-1:0] inst_i,
     input wire[`ADDR_WIDTH-1:0] inst_addr_i,
@@ -20,7 +20,21 @@ module id_exe (
     output reg[`RADDR_WIDTH-1:0] reg_waddr_o
 );
     always @(posedge clk_i) begin
-        if(rst_i == 1'b1 || stall_i == 1'b1 || flush_jump_i == 1'b1) begin
+        if(rst_i == 1'b1 || flush_jump_i == 1'b1) begin
+            inst_o <= `NOP;
+            inst_addr_o <= `ZERO;
+            op1_o <= `ZERO;
+            op2_o <= `ZERO;
+            reg_we_o <= `WRITE_DISABLE;
+            reg_waddr_o <= `ZERO_REG;
+        end else if(stall_i[3] == `STOP) begin
+            inst_o <= inst_o;
+            inst_addr_o <= inst_addr_o;
+            op1_o <= op1_o;
+            op2_o <= op2_o;
+            reg_we_o <= reg_we_o;
+            reg_waddr_o <= reg_waddr_o;
+        end else if(stall_i[2] == `STOP) begin
             inst_o <= `NOP;
             inst_addr_o <= `ZERO;
             op1_o <= `ZERO;

@@ -1,12 +1,19 @@
-TOP      = test_top
-GTKWAVE  = gtkwave
+TOP        = test_top
+GTKWAVE    = gtkwave
 
 # 模擬器執行檔路徑
-BUILD_DIR = build
+BUILD_DIR  = build
 TARGET_BIN = $(BUILD_DIR)/V$(TOP)
 
-# RTL 原始碼搜尋路徑 (自動涵蓋 exe/ 下的 mul.v, div.v 等所有模組)
+# 韌體檔路徑
+ISA_TEST_BIN = soc/firmware/isa_tests/test.bin
+C_FW_DIR     = soc/firmware
+C_FW_BIN     = $(C_FW_DIR)/firmware.bin
+
+# RTL 原始碼搜尋路徑 (自動涵蓋核心與周邊模組)
 V_SRC    = soc/rtl/core/test_top.v
+V_SRC   += soc/rtl/bus.v
+V_SRC   += soc/rtl/console.v
 V_SRC   += soc/rtl/core/pipe_crtl.v
 V_SRC   += $(wildcard soc/rtl/core/if/*.v)
 V_SRC   += $(wildcard soc/rtl/core/id/*.v)
@@ -21,15 +28,24 @@ SIM_SRC  = $(wildcard soc/sim/*.cpp)
 # Include 目錄
 INC      = -Isoc/rtl/include
 
-.PHONY: all run wave test clean
+.PHONY: all run run_c test wave clean build_c_fw
 
 all: run
 
-# 1. 編譯測試軟體 (test.bin)
-soc/firmware/isa_tests/test.bin:
+# ------------------------------------------------------------------------------
+# 韌體編譯規則
+# ------------------------------------------------------------------------------
+# 1. 組譯 ISA 測試程式
+$(ISA_TEST_BIN):
 	$(MAKE) -C soc/firmware/isa_tests
 
-# 2. Verilator 轉譯與建置 (直接編譯出 build/Vtest_top)
+# 2. 編譯 C 語言韌體程式 (boot.S + main.c + kprintf.c ...)
+build_c_fw:
+	$(MAKE) -C $(C_FW_DIR)
+
+# ------------------------------------------------------------------------------
+# Verilator 硬體轉譯與編譯
+# ------------------------------------------------------------------------------
 $(TARGET_BIN): $(V_SRC) $(SIM_SRC)
 	@mkdir -p $(BUILD_DIR)
 	verilator -Wall -Wno-fatal --cc --exe --build \
@@ -39,19 +55,29 @@ $(TARGET_BIN): $(V_SRC) $(SIM_SRC)
 		--top-module $(TOP) \
 		$(V_SRC) $(SIM_SRC)
 
-# 3. 執行預設單一韌體模擬
-run: soc/firmware/isa_tests/test.bin $(TARGET_BIN)
-	./$(TARGET_BIN) soc/firmware/isa_tests/test.bin
+# ------------------------------------------------------------------------------
+# 執行與測試指令
+# ------------------------------------------------------------------------------
+# 預設：執行單一 ISA Assembly 測試 (test.bin)
+run: $(ISA_TEST_BIN) $(TARGET_BIN)
+	./$(TARGET_BIN) $(ISA_TEST_BIN)
 
-# 4. 批次執行全套 RISC-V ISA Tests (rv32ui / rv32um)
+# 新增：執行 C 語言 kprintf 測試 (firmware.bin)
+run_c: build_c_fw $(TARGET_BIN)
+	@mkdir -p log
+	./$(TARGET_BIN) $(C_FW_BIN)
+
+# 批次執行全套 RISC-V ISA Tests
 test: $(TARGET_BIN)
 	$(MAKE) -C soc/firmware/isa_tests
 	python3 soc/test_all_isa.py
 
-# 5. 開啟 GTKWave 觀察波形
+# 開啟 GTKWave 觀察波形
 wave: run
 	$(GTKWAVE) wave.vcd &
 
+# 清理編譯快取檔
 clean:
 	if [ -f soc/firmware/isa_tests/Makefile ]; then $(MAKE) -C soc/firmware/isa_tests clean; fi
-	rm -rf $(BUILD_DIR) wave.vcd
+	if [ -f $(C_FW_DIR)/Makefile ]; then $(MAKE) -C $(C_FW_DIR) clean; fi
+	rm -rf $(BUILD_DIR) wave.vcd log/

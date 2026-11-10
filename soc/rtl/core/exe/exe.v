@@ -100,6 +100,31 @@ module exe (
                             reg_we_o = reg_we_i;
                             reg_wdata_o = op1_i | op2_i;
                         end
+                        `INST_SLTI: begin
+                            reg_we_o = reg_we_i;
+                            reg_wdata_o = ($signed(op1_i) < $signed(op2_i)) ? 32'd1 : 32'd0;
+                        end
+                        `INST_SLTIU: begin
+                            reg_we_o = reg_we_i;
+                            reg_wdata_o = (op1_i < op2_i) ? 32'd1 : 32'd0;
+                        end
+                        `INST_XORI: begin
+                            reg_we_o = reg_we_i;
+                            reg_wdata_o = op1_i ^ op2_i;
+                        end
+                        `INST_ANDI: begin
+                            reg_we_o = reg_we_i;
+                            reg_wdata_o = op1_i & op2_i;
+                        end
+                        `INST_SLL: begin
+                            reg_we_o = reg_we_i;
+                            reg_wdata_o = op1_i << op2_i[4:0];
+                        end
+                        `INST_SR: begin
+                            reg_we_o = reg_we_i;
+                            if(inst_i[30] == 1'b1) reg_wdata_o = $signed(op1_i) >>> op2_i[4:0];
+                            else reg_wdata_o = op1_i >> op2_i[4:0];
+                        end
                         default: begin
                             reg_we_o = `WRITE_DISABLE;
                             reg_wdata_o = `ZERO;

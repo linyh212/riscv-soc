@@ -22,7 +22,8 @@ module id_type_r (
     wire[4:0] rd = inst_i[11:7];
     wire[4:0] rs1 = inst_i[19:15];
     wire[4:0] rs2 = inst_i[24:20];
-    wire isType_r = (opcode == `INST_TYPE_R_M) && ((funct7 == 7'b0000000) || (funct7 == 7'b0100000));
+    wire isType_r = (opcode == `INST_TYPE_R_M) &&
+        ((funct7 == 7'b0000000) || (funct7 == 7'b0100000) || (funct7 == 7'b0000001));
     always @(*) begin
         if(isType_r) begin
             reg_we_o = `WRITE_ENABLE;
