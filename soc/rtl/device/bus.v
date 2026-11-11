@@ -27,8 +27,10 @@ module bus #(
 );
     localparam NumBitsHostSel = $clog2(NrHosts) > 0 ? $clog2(NrHosts) : 1;
     localparam NumBitsDeviceSel = $clog2(NrDevices) > 0 ? $clog2(NrDevices) : 1;
+    /* verilator lint_off UNUSEDSIGNAL */
     reg[NumBitsHostSel-1:0] host_sel_req, host_sel_resp;
     reg[NumBitsDeviceSel-1:0] device_sel_req, device_sel_resp;
+    /* verilator lint_on UNUSEDSIGNAL */
     // 1. Host Prior Arbiter
     always @(*) begin
         host_sel_req = '0;
@@ -81,7 +83,7 @@ module bus #(
     always @(posedge clk_i) begin
         if(rst_i == 1'b1) begin
             host_sel_resp <= 1'b0;
-            device_sel_resp <= 1'b0;
+            device_sel_resp <= '0;
         end else begin
             device_sel_resp <= device_sel_req;
             host_sel_resp <= host_sel_req;

@@ -10,7 +10,7 @@ module test_top (
     output wire[`RDATA_WIDTH-1:0]   id_op2_o,
     output wire                     halt_o
 );
-    localparam int NrDevices = 2;
+    localparam int NrDevices = 3;
     localparam int NrHosts = 1;
     localparam int MemSize = 32'h100000;
     localparam int MemAddrWidth = 20;
@@ -18,6 +18,7 @@ module test_top (
     `define HOST_CORE_PORT  0
     `define DEV_RAM         0
     `define DEV_CONSOLE     1
+    `define DEV_TIMER       2
 
     wire                    host_req[NrHosts];
     /* verilator lint_off UNUSEDSIGNAL */
@@ -42,6 +43,9 @@ module test_top (
 
     assign cfg_device_addr_base[`DEV_CONSOLE] = 32'h00200000;
     assign cfg_device_addr_mask[`DEV_CONSOLE] = 32'hFFFFFF00;
+
+    assign cfg_device_addr_base[`DEV_TIMER] = 32'h00300000;
+    assign cfg_device_addr_mask[`DEV_TIMER] = 32'hFFFFFF00;
     
     // ISA test
     wire                    mem_halt_o;
@@ -355,5 +359,18 @@ module test_top (
         .addr_i(device_addr[`DEV_CONSOLE]),
         .wdata_i(device_wdata[`DEV_CONSOLE]),
         .halt_o(console_halt_o)
+    );
+    /* verilator lint_off UNUSEDSIGNAL */
+    wire timer_irq;
+    /* verilator lint_on UNUSEDSIGNAL */
+    timer timer0 (
+        .clk_i(clk_i),
+        .rst_i(rst_i),
+        .req_i(device_req[`DEV_TIMER]),
+        .we_i(device_we[`DEV_TIMER]),
+        .addr_i(device_addr[`DEV_TIMER]),
+        .wdata_i(device_wdata[`DEV_TIMER]),
+        .rdata_o(device_rdata[`DEV_TIMER]),
+        .irq_o(timer_irq)
     );
 endmodule
