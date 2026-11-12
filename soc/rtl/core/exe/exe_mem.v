@@ -10,13 +10,20 @@ module exe_mem (
     input wire mem_we_i,
     input wire[`DATA_WIDTH-1:0] mem_data_i,
     input wire[3:0] mem_op_i,
+    input  wire csr_we_i,
+    input  wire [`CSR_ADDR_WIDTH-1:0] csr_waddr_i,
+    input  wire [`DATA_WIDTH-1:0] csr_wdata_i,
+
     output reg[`RADDR_WIDTH-1:0] reg_waddr_o,
     output reg reg_we_o,
     output reg[`RDATA_WIDTH-1:0] reg_wdata_o,
     output reg[`ADDR_WIDTH-1:0] mem_addr_o,
     output reg mem_we_o,
     output reg[`DATA_WIDTH-1:0] mem_data_o,
-    output reg[3:0] mem_op_o
+    output reg[3:0] mem_op_o,
+    output reg csr_we_o,
+    output reg[`CSR_ADDR_WIDTH-1:0] csr_waddr_o,
+    output reg[`DATA_WIDTH-1:0] csr_wdata_o
 );
     always @(posedge clk_i) begin
         if(rst_i == 1'b1) begin
@@ -27,6 +34,9 @@ module exe_mem (
             mem_we_o <= `WRITE_DISABLE;
             mem_data_o <= `ZERO;
             mem_op_o <= `MEM_NOP;
+            csr_we_o <= `WRITE_DISABLE;
+            csr_waddr_o <= {`CSR_ADDR_WIDTH{1'b0}};
+            csr_wdata_o <= `ZERO;
         end else begin
             reg_waddr_o <= reg_waddr_i;
             reg_we_o <= reg_we_i;
@@ -35,6 +45,9 @@ module exe_mem (
             mem_we_o <= mem_we_i;
             mem_data_o <= mem_data_i;
             mem_op_o <= mem_op_i;
+            csr_we_o <= csr_we_i;
+            csr_waddr_o <= csr_waddr_i;
+            csr_wdata_o <= csr_wdata_i;
         end
     end
 endmodule

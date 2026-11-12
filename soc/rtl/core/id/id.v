@@ -30,10 +30,14 @@ module id (
     output reg reg_we_o,
     output reg[`RADDR_WIDTH-1:0] reg_waddr_o,
 
-    output reg stallreq_o
+    output reg stallreq_o,
+
+    output reg csr_we_o,
+    output reg[`CSR_ADDR_WIDTH-1:0] csr_addr_o
 );
 /* verilator lint_on UNUSEDSIGNAL */
     wire[6:0] opcode = inst_i[6:0];
+    wire[2:0] funct3 = inst_i[14:12];
     wire[4:0] rd = inst_i[11:7];
     wire[4:0] rs1 = inst_i[19:15];
     wire[4:0] rs2 = inst_i[24:20];
@@ -126,6 +130,8 @@ module id (
             op2_o_final = `ZERO;
             reg_we_o = `WRITE_DISABLE;
             reg_waddr_o = `ZERO_REG;
+            csr_we_o = `WRITE_DISABLE;
+            csr_addr_o = {`CSR_ADDR_WIDTH{1'b0}};
         end else begin
             inst_o = `NOP;
             reg1_raddr_o = `ZERO_REG;
@@ -136,6 +142,8 @@ module id (
             op2_o_final = `ZERO;
             reg_we_o = `WRITE_DISABLE;
             reg_waddr_o = `ZERO_REG;
+            csr_we_o = `WRITE_DISABLE;
+            csr_addr_o = {`CSR_ADDR_WIDTH{1'b0}};
             case (opcode)
                 `INST_TYPE_I: begin
                     inst_o = inst_i;
@@ -209,6 +217,75 @@ module id (
                     op2_o_final = {inst_i[31:12], 12'b0};
                     reg_we_o = `WRITE_ENABLE;
                     reg_waddr_o = rd;
+                end
+                `INST_TYPE_SYSTEM: begin
+                    case (funct3)
+                        `INST_CSRRW: begin
+                            inst_o = inst_i;
+                            reg1_raddr_o = rs1;
+                            reg2_raddr_o = `ZERO_REG;
+                            reg1_re_o = `READ_ENABLE;
+                            reg2_re_o = `READ_DISABLE;
+                            reg_we_o = `WRITE_ENABLE;
+                            reg_waddr_o = rd;
+                            op1_o_final = reg1_rdata_i;
+                            op2_o_final = `ZERO;
+                            csr_we_o = `WRITE_ENABLE;
+                            csr_addr_o = inst_i[31:20];
+                        end
+                        `INST_CSRRS, `INST_CSRRC: begin
+                            inst_o = inst_i;
+                            reg1_raddr_o = rs1;
+                            reg2_raddr_o = `ZERO_REG;
+                            reg1_re_o = `READ_ENABLE;
+                            reg2_re_o = `READ_DISABLE;
+                            reg_we_o = `WRITE_ENABLE;
+                            reg_waddr_o = rd;
+                            op1_o_final = reg1_rdata_i;
+                            op2_o_final = `ZERO;
+                            csr_we_o = (rs1 == `ZERO_REG)? `WRITE_DISABLE : `WRITE_ENABLE;
+                            csr_addr_o = inst_i[31:20];
+                        end
+                        `INST_CSRRWI: begin
+                            inst_o = inst_i;
+                            reg1_raddr_o = `ZERO_REG;
+                            reg2_raddr_o = `ZERO_REG;
+                            reg1_re_o = `READ_DISABLE;
+                            reg2_re_o = `READ_DISABLE;
+                            reg_we_o = `WRITE_ENABLE;
+                            reg_waddr_o = rd;
+                            op1_o_final = {27'b0, inst_i[19:15]};
+                            op2_o_final = `ZERO;
+                            csr_we_o = `WRITE_ENABLE;
+                            csr_addr_o = inst_i[31:20];
+                        end
+                        `INST_CSRRSI, `INST_CSRRCI: begin
+                            inst_o = inst_i;
+                            reg1_raddr_o = `ZERO_REG;
+                            reg2_raddr_o = `ZERO_REG;
+                            reg1_re_o = `READ_DISABLE;
+                            reg2_re_o = `READ_DISABLE;
+                            reg_we_o = `WRITE_ENABLE;
+                            reg_waddr_o = rd;
+                            op1_o_final = {27'b0, inst_i[19:15]};
+                            op2_o_final = `ZERO;
+                            csr_we_o = (inst_i[19:15] == 5'b0)? `WRITE_DISABLE : `WRITE_ENABLE;
+                            csr_addr_o = inst_i[31:20];
+                        end
+                        default: begin
+                            inst_o = `NOP;
+                            reg1_raddr_o = `ZERO_REG;
+                            reg2_raddr_o = `ZERO_REG;
+                            reg1_re_o = `READ_DISABLE;
+                            reg2_re_o = `READ_DISABLE;
+                            reg_we_o = `WRITE_DISABLE;
+                            reg_waddr_o = `ZERO_REG;
+                            op1_o_final = `ZERO;
+                            op2_o_final = `ZERO;
+                            csr_we_o = `WRITE_DISABLE;
+                            csr_addr_o = {`CSR_ADDR_WIDTH{1'b0}};
+                        end
+                    endcase
                 end
                 default: begin
                     inst_o = `NOP;

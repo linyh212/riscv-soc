@@ -69,45 +69,67 @@ module test_top (
     wire[`RDATA_WIDTH-1:0]  reg2_data_o;
 
     // ID to ID/EXE
-    wire[`DATA_WIDTH-1:0]   id_inst_o;
-    wire                    id_reg_we_o;
-    wire[`RADDR_WIDTH-1:0]  id_reg_waddr_o;
+    wire[`DATA_WIDTH-1:0]       id_inst_o;
+    wire                        id_reg_we_o;
+    wire[`RADDR_WIDTH-1:0]      id_reg_waddr_o;
+    wire                        id_csr_we_o;
+    wire[`CSR_ADDR_WIDTH-1:0]   id_csr_addr_o;
 
     // ID/EXE to EXE
-    wire[`DATA_WIDTH-1:0]   id_exe_inst_o;
-    wire[`ADDR_WIDTH-1:0]   id_exe_inst_addr_o;
-    wire[`RDATA_WIDTH-1:0]  id_exe_op1_o;
-    wire[`RDATA_WIDTH-1:0]  id_exe_op2_o;
-    wire                    id_exe_reg_we_o;
-    wire[`RADDR_WIDTH-1:0]  id_exe_reg_waddr_o;
+    wire[`DATA_WIDTH-1:0]       id_exe_inst_o;
+    wire[`ADDR_WIDTH-1:0]       id_exe_inst_addr_o;
+    wire[`RDATA_WIDTH-1:0]      id_exe_op1_o;
+    wire[`RDATA_WIDTH-1:0]      id_exe_op2_o;
+    wire                        id_exe_reg_we_o;
+    wire[`RADDR_WIDTH-1:0]      id_exe_reg_waddr_o;
+    wire                        id_exe_csr_we_o;
+    wire[`CSR_ADDR_WIDTH-1:0]   id_exe_csr_addr_o;
+
+    // EXE <-> CSR (READ)
+    wire[`CSR_ADDR_WIDTH-1:0]   exe_csr_raddr_o;
+    wire[`DATA_WIDTH-1:0]       csr_rdata_o;
 
     // EXE to EXE/MEM
-    wire[`RADDR_WIDTH-1:0]  exe_reg_waddr_o;
-    wire exe_reg_we_o;
-    wire[`RDATA_WIDTH-1:0]  exe_reg_wdata_o;
-    wire[`ADDR_WIDTH-1:0]   exe_mem_addr_o;
-    wire                    exe_mem_we_o;
-    wire[`DATA_WIDTH-1:0]   exe_mem_data_o;
-    wire[3:0]               exe_mem_op_o;
+    wire[`RADDR_WIDTH-1:0]      exe_reg_waddr_o;
+    wire                        exe_reg_we_o;
+    wire[`RDATA_WIDTH-1:0]      exe_reg_wdata_o;
+    wire[`ADDR_WIDTH-1:0]       exe_mem_addr_o;
+    wire                        exe_mem_we_o;
+    wire[`DATA_WIDTH-1:0]       exe_mem_data_o;
+    wire[3:0]                   exe_mem_op_o;
+    wire                        exe_csr_we_o;
+    wire[`CSR_ADDR_WIDTH-1:0]   exe_csr_waddr_o;
+    wire[`DATA_WIDTH-1:0]       csr_csr_wdata_o;
 
     // EXE/MEM to MEM
-    wire[`RADDR_WIDTH-1:0]  exe_mem_reg_waddr_o;
-    wire                    exe_mem_reg_we_o;
-    wire[`RDATA_WIDTH-1:0]  exe_mem_reg_wdata_o;
-    wire[`ADDR_WIDTH-1:0]   exe_mem_mem_addr_o;
-    wire                    exe_mem_mem_we_o;
-    wire[`DATA_WIDTH-1:0]   exe_mem_mem_data_o;
-    wire[3:0]               exe_mem_mem_op_o;
+    wire[`RADDR_WIDTH-1:0]      exe_mem_reg_waddr_o;
+    wire                        exe_mem_reg_we_o;
+    wire[`RDATA_WIDTH-1:0]      exe_mem_reg_wdata_o;
+    wire[`ADDR_WIDTH-1:0]       exe_mem_mem_addr_o;
+    wire                        exe_mem_mem_we_o;
+    wire[`DATA_WIDTH-1:0]       exe_mem_mem_data_o;
+    wire[3:0]                   exe_mem_mem_op_o;
+    wire                        exe_mem_csr_we_o;
+    wire[`CSR_ADDR_WIDTH-1:0]   exe_mem_csr_waddr_o;
+    wire[`DATA_WIDTH-1:0]       csr_mem_csr_wdata_o;
 
     // MEM to MEM/WB
-    wire[`RADDR_WIDTH-1:0]  mem_reg_waddr_o;
-    wire                    mem_reg_we_o;
-    wire[`RDATA_WIDTH-1:0]  mem_reg_wdata_o;
+    wire[`RADDR_WIDTH-1:0]      mem_reg_waddr_o;
+    wire                        mem_reg_we_o;
+    wire[`RDATA_WIDTH-1:0]      mem_reg_wdata_o;
+    wire                        mem_csr_we_o;
+    wire[`CSR_ADDR_WIDTH-1:0]   mem_csr_waddr_o;
+    wire[`DATA_WIDTH-1:0]       mem_csr_wdata_o;
 
     // MEM/WB to WB (Regfile Write-Back)
     wire[`RADDR_WIDTH-1:0]  mem_wb_reg_waddr_o;
     wire                    mem_wb_reg_we_o;
     wire[`RDATA_WIDTH-1:0]  mem_wb_reg_wdata_o;
+
+    // MEM/WB to CSR (WRITE)
+    wire                        mem_wb_csr_we_o;
+    wire[`CSR_ADDR_WIDTH-1:0]   mem_wb_csr_waddr_o;
+    wire[`DATA_WIDTH-1:0]       mem_wb_csr_rdata_o;
     
     // Pipeline Control Signal
     /* verilator lint_off UNUSEDSIGNAL */
@@ -195,7 +217,9 @@ module test_top (
         .op2_o(id_op2_o),
         .reg_we_o(id_reg_we_o),
         .reg_waddr_o(id_reg_waddr_o),
-        .stallreq_o(id_stallreq_o)
+        .stallreq_o(id_stallreq_o),
+        .csr_we_o(id_csr_we_o),
+        .csr_addr_o(id_csr_addr_o)
     );
     regfile regfile0 (
         .clk_i(clk_i),
@@ -226,7 +250,11 @@ module test_top (
         .op1_o(id_exe_op1_o),
         .op2_o(id_exe_op2_o),
         .reg_we_o(id_exe_reg_we_o),
-        .reg_waddr_o(id_exe_reg_waddr_o)
+        .reg_waddr_o(id_exe_reg_waddr_o),
+        .csr_we_i(id_csr_we_o),
+        .csr_addr_i(id_csr_addr_o),
+        .csr_we_o(id_exe_csr_we_o),
+        .csr_addr_o(id_exe_csr_addr_o)
     );
     exe exe0 (
         .clk_i(clk_i),
@@ -246,7 +274,17 @@ module test_top (
         .mem_op_o(exe_mem_op_o),
         .jump_addr_o(exe_jump_addr_o),
         .jump_enable_o(exe_jump_enable_o),
-        .stallreq_o(exe_stallreq_o)
+        .stallreq_o(exe_stallreq_o),
+        .csr_we_i(id_exe_csr_we_o),
+        .csr_addr_i(id_exe_csr_addr_o),
+        .csr_raddr_o(exe_csr_raddr_o),
+        .csr_rdata_i(csr_rdata_o),
+        .mem_csr_we_i(mem_csr_we_o),
+        .mem_csr_waddr_i(mem_csr_waddr_o),
+        .mem_csr_wdata_i(mem_csr_wdata_o),
+        .csr_we_o(exe_csr_we_o),
+        .csr_waddr_o(exe_csr_waddr_o),
+        .csr_wdata_o(csr_csr_wdata_o)
     );
     exe_mem exe_mem0 (
         .clk_i(clk_i),
@@ -264,7 +302,13 @@ module test_top (
         .mem_addr_o(exe_mem_mem_addr_o),
         .mem_we_o(exe_mem_mem_we_o),
         .mem_data_o(exe_mem_mem_data_o),
-        .mem_op_o(exe_mem_mem_op_o)
+        .mem_op_o(exe_mem_mem_op_o),
+        .csr_we_i(exe_csr_we_o),
+        .csr_waddr_i(exe_csr_waddr_o),
+        .csr_wdata_i(csr_csr_wdata_o),
+        .csr_we_o(exe_mem_csr_we_o),
+        .csr_waddr_o(exe_mem_csr_waddr_o),
+        .csr_wdata_o(csr_mem_csr_wdata_o)
     );
     mem mem0 (
         .rst_i(rst_i),
@@ -282,7 +326,13 @@ module test_top (
         .reg_waddr_o(mem_reg_waddr_o),
         .reg_we_o(mem_reg_we_o),
         .reg_wdata_o(mem_reg_wdata_o),
-        .halt_o(mem_halt_o)
+        .halt_o(mem_halt_o),
+        .csr_we_i(exe_mem_csr_we_o),
+        .csr_waddr_i(exe_mem_csr_waddr_o),
+        .csr_wdata_i(csr_mem_csr_wdata_o),
+        .csr_we_o(mem_csr_we_o),
+        .csr_waddr_o(mem_csr_waddr_o),
+        .csr_wdata_o(mem_csr_wdata_o)
     );
     mem_wb mem_wb0 (
         .clk_i(clk_i),
@@ -292,7 +342,13 @@ module test_top (
         .reg_wdata_i(mem_reg_wdata_o),
         .reg_waddr_o(mem_wb_reg_waddr_o),
         .reg_we_o(mem_wb_reg_we_o),
-        .reg_wdata_o(mem_wb_reg_wdata_o)
+        .reg_wdata_o(mem_wb_reg_wdata_o),
+        .csr_we_i(mem_csr_we_o),
+        .csr_waddr_i(mem_csr_waddr_o),
+        .csr_wdata_i(mem_csr_wdata_o),
+        .csr_we_o(mem_wb_csr_we_o),
+        .csr_waddr_o(mem_wb_csr_waddr_o),
+        .csr_wdata_o(mem_wb_csr_rdata_o)
     );
     pipe_crtl pipe_crtl0 (
         .rst_i(rst_i),
@@ -304,7 +360,16 @@ module test_top (
         .flush_jump_o(ctrl_flush_jump_o),
         .new_pc_o(ctrl_new_pc_o)
     );
-
+    csr csr0 (
+        .clk_i(clk_i),
+        .rst_i(rst_i),
+        .raddr_i(exe_csr_raddr_o),
+        .rdata_o(csr_rdata_o),
+        .we_i(mem_wb_csr_we_o),
+        .waddr_i(mem_wb_csr_waddr_o),
+        .wdata_i(mem_wb_csr_rdata_o),
+        .instret_incr_i(1'b0)
+    );
     assign host_req[`HOST_CORE_PORT] = core_ram_ce_o;
     assign host_addr[`HOST_CORE_PORT] = core_ram_addr_o;
     assign host_we[`HOST_CORE_PORT] = core_ram_w_request_o;

@@ -19,7 +19,18 @@ module exe (
     output reg[3:0] mem_op_o,
     output wire[`ADDR_WIDTH-1:0] jump_addr_o,
     output wire jump_enable_o,
-    output wire stallreq_o
+    output wire stallreq_o,
+
+    input wire csr_we_i,
+    input wire[`CSR_ADDR_WIDTH-1:0] csr_addr_i,
+    output reg[`CSR_ADDR_WIDTH-1:0] csr_raddr_o,
+    input wire[`DATA_WIDTH-1:0] csr_rdata_i,
+    input wire mem_csr_we_i,
+    input wire[`CSR_ADDR_WIDTH-1:0] mem_csr_waddr_i,
+    input wire[`DATA_WIDTH-1:0] mem_csr_wdata_i,
+    output reg csr_we_o,
+    output reg[`CSR_ADDR_WIDTH-1:0] csr_waddr_o,
+    output reg[`DATA_WIDTH-1:0] csr_wdata_o
 );
     wire[6:0] opcode = inst_i[6:0];
     wire[2:0] funct3 = inst_i[14:12];
@@ -39,6 +50,18 @@ module exe (
 
     assign stallreq_o = m_stall_o;
     
+    assign csr_raddr_o = csr_addr_i;
+    reg[`DATA_WIDTH-1:0] csr_rdata_forwarded;
+    always @(*) begin
+        if((csr_addr_i == mem_csr_waddr_i) && (mem_csr_we_i == `WRITE_ENABLE)) begin
+            csr_rdata_forwarded = mem_csr_wdata_i;
+        end else begin
+            csr_rdata_forwarded = csr_rdata_i;
+        end
+    end
+    wire[`RDATA_WIDTH-1:0] system_reg_wdata_o;
+    wire[`DATA_WIDTH-1:0] system_csr_wdata_o;
+
     exe_type_r exe_type_r0(
         .rst_i(rst_i),
         .op1_i(op1_i),
@@ -78,6 +101,14 @@ module exe (
         .reg_wdata_o(m_reg_wdata_o),
         .reg_we_o(m_reg_we_o)
     );
+    exe_type_system exe_type_system0(
+        .rst_i(rst_i),
+        .op1_i(op1_i),
+        .inst_i(inst_i),
+        .csr_rdata_i(csr_rdata_forwarded),
+        .reg_wdata_o(system_reg_wdata_o),
+        .csr_wdata_o(system_csr_wdata_o)
+    );
     always @(*) begin
         reg_waddr_o = `ZERO_REG;
         reg_we_o = `WRITE_DISABLE;
@@ -86,6 +117,9 @@ module exe (
         mem_we_o = `WRITE_DISABLE;
         mem_data_o = `ZERO;
         mem_op_o = `MEM_NOP;
+        csr_we_o = `WRITE_DISABLE;
+        csr_waddr_o = {`CSR_ADDR_WIDTH{1'b0}};
+        csr_wdata_o = `ZERO;
         if(rst_i == 1'b1) begin
         end else begin
             case (opcode)
@@ -158,6 +192,18 @@ module exe (
                     mem_we_o = sl_mem_we_o;
                     mem_data_o = sl_mem_data_o;
                     mem_op_o = sl_mem_op_o;
+                end
+                `INST_TYPE_SYSTEM: begin
+                    reg_waddr_o = reg_waddr_i;
+                    reg_we_o = reg_we_i;
+                    reg_wdata_o = system_reg_wdata_o;
+                    mem_addr_o = `ZERO;
+                    mem_we_o = `WRITE_DISABLE;
+                    mem_data_o = `ZERO;
+                    mem_op_o = `MEM_NOP;
+                    csr_we_o = csr_we_i;
+                    csr_waddr_o = csr_addr_i;
+                    csr_wdata_o = system_csr_wdata_o;
                 end
                 default: begin
                 end

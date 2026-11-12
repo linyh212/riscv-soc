@@ -1,5 +1,5 @@
 CROSS_COMPILE = riscv64-unknown-elf-
-CFLAGS        = -nostdlib -fno-builtin -march=rv32ima -mabi=ilp32 -g -Wall
+CFLAGS        = -nostdlib -fno-builtin -march=rv32imazicsr -mabi=ilp32 -g -Wall
 CC            = $(CROSS_COMPILE)gcc
 OBJCOPY       = $(CROSS_COMPILE)objcopy
 OBJDUMP       = $(CROSS_COMPILE)objdump

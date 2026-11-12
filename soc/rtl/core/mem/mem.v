@@ -20,7 +20,14 @@ module mem (
     output reg ram_w_request_o,
     output reg[`RDATA_WIDTH-1:0] ram_data_o,
 
-    output reg halt_o
+    output reg halt_o,
+
+    input  wire csr_we_i,
+    input  wire[`CSR_ADDR_WIDTH-1:0] csr_waddr_i,
+    input  wire[`DATA_WIDTH-1:0]     csr_wdata_i,
+    output reg csr_we_o,
+    output reg[`CSR_ADDR_WIDTH-1:0] csr_waddr_o,
+    output reg[`DATA_WIDTH-1:0] csr_wdata_o
 );
     wire[1:0] ram_addr_offset = mem_addr_i[1:0];
     always @(*) begin
@@ -38,12 +45,18 @@ module mem (
             ram_addr_o = `ZERO;
             ram_w_request_o = `WRITE_DISABLE;
             ram_data_o = `ZERO;
+            csr_we_o = `WRITE_DISABLE;
+            csr_waddr_o = {`CSR_ADDR_WIDTH{1'b0}};
+            csr_wdata_o = `ZERO;
         end else begin
             reg_waddr_o = reg_waddr_i;
             reg_we_o = reg_we_i;
             ram_w_request_o = mem_we_i;
             ram_addr_o = mem_addr_i;
             ram_data_o = `ZERO;
+            csr_we_o = csr_we_i;
+            csr_waddr_o = csr_waddr_i;
+            csr_wdata_o = csr_wdata_i;
             case (mem_op_i)
                 `LB: begin
                     case (ram_addr_offset)

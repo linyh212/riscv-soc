@@ -1,71 +1,67 @@
-.section .text
+.text
 .global _start
 
 _start:
-    li      gp, 0
+    # 初始化 x3 = 0，避免測試過程中途誤觸發 PASS/FAIL
+    li x3, 0
 
-    li      x2, 10
-    li      x4, 20
-    bne     x2, x4, test_beq_pass
-    li      gp, 4
-    j       fail
+    # --- Test Case 1: CSRRWI (imm = 0x15) ---
+    csrrwi x4, mscratch, 0x15   # mscratch <- 0x15, x4 <- 0
+    li x15, 0
+    bne x4, x15, fail_1
 
-test_beq_pass:
-    li      x4, 10
-    beq     x2, x4, test_blt_pass
-    li      gp, 6
-    j       fail
+    # --- Test Case 2: CSRRSI (imm = 0x08) & Data Hazard ---
+    csrrsi x5, mscratch, 0x08   # mscratch <- 0x15 | 0x08 = 0x1D, x5 <- 0x15
+    li x15, 0x15
+    bne x5, x15, fail_2
 
-test_blt_pass:
-    li      x2, -5
-    li      x4, 5
-    blt     x2, x4, test_bge_pass
-    li      gp, 8
-    j       fail
+    # --- Test Case 3: CSRRCI (imm = 0x05) & Data Hazard ---
+    csrrci x6, mscratch, 0x05   # mscratch <- 0x1D & ~0x05 = 0x18, x6 <- 0x1D
+    li x15, 0x1D
+    bne x6, x15, fail_3
 
-test_bge_pass:
-    bge     x4, x2, test_bltu_pass
-    li      gp, 10
-    j       fail
+    # --- Test Case 4: CSRRS (rs1 = 0xF0) ---
+    li x7, 0x000000F0
+    csrrs x8, mscratch, x7      # mscratch <- 0x18 | 0xF0 = 0xF8, x8 <- 0x18
+    li x15, 0x18
+    bne x8, x15, fail_4
 
-test_bltu_pass:
-    li      x2, 5                   
-    li      x4, -5                  
-    bltu    x2, x4, test_bgeu_pass
-    li      gp, 12
-    j       fail
+    # --- Test Case 5: CSRRC (rs1 = 0x30) ---
+    li x9, 0x00000030
+    csrrc x10, mscratch, x9     # mscratch <- 0xF8 & ~0x30 = 0xC8, x10 <- 0xF8
+    li x15, 0xF8
+    bne x10, x15, fail_5
 
-test_bgeu_pass:
-    bgeu    x4, x2, test_jal_pass
-    li      gp, 14
-    j       fail
+    # --- Test Case 6: CSRRW (rs1 = 0x12345678) 並驗證前一步結果 0xC8 ---
+    li x11, 0x12345678
+    csrrw x12, mscratch, x11    # mscratch <- 0x12345678, x12 <- 0xC8
+    li x15, 0xC8
+    bne x12, x15, fail_6
 
-test_jal_pass:
-    jal     x1, func_jal            
-    li      gp, 16
-    j       fail
+    # --- Test Case 7: 連續 CSRRW 驗證緊鄰 Data Hazard (MEM -> EXE Forwarding) ---
+    li x13, 0xAABBCCDD
+    csrrw x14, mscratch, x13    # mscratch <- 0xAABBCCDD, x14 <- 0x12345678
+    li x15, 0x12345678
+    bne x14, x15, fail_7
 
-func_jal:
-    la      x7, test_jal_pass + 4
-    bne     x1, x7, fail_jal_link
-    j       test_jalr_start
+    # --- Test Case 8: 驗證唯讀保護 (rs1 = x0 時 CSRRS 不應改寫 mscratch) ---
+    csrrs x16, mscratch, x0     # x16 <- 0xAABBCCDD, mscratch 維持不變
+    li x15, 0xAABBCCDD
+    bne x16, x15, fail_8
 
-fail_jal_link:
-    li      gp, 18
-    j       fail
+pass:
+    li x3, 1                    # 設定 gp (x3) = 1，通知 testbench PASS
+    j done
 
-test_jalr_start:
-    la      x6, target_jalr
-    jalr    x5, x6, 0               
-    li      gp, 20
-    j       fail
+fail_1: li x3, (1 << 1) | 1; j done
+fail_2: li x3, (2 << 1) | 1; j done
+fail_3: li x3, (3 << 1) | 1; j done
+fail_4: li x3, (4 << 1) | 1; j done
+fail_5: li x3, (5 << 1) | 1; j done
+fail_6: li x3, (6 << 1) | 1; j done
+fail_7: li x3, (7 << 1) | 1; j done
+fail_8: li x3, (8 << 1) | 1; j done
 
-target_jalr:
-    li      gp, 1
-pass_loop:
-    j       pass_loop
-
-fail:
-1:  j       1b
-
+done:
+    j done
 .end

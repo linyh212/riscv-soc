@@ -3,7 +3,7 @@ CC            := $(CROSS_COMPILE)gcc
 OBJCOPY       := $(CROSS_COMPILE)objcopy
 OBJDUMP       := $(CROSS_COMPILE)objdump
 
-CFLAGS        := -nostdlib -nostartfiles -fno-builtin -march=rv32im -mabi=ilp32 -g -Wall
+CFLAGS        := -nostdlib -nostartfiles -fno-builtin -march=rv32imazicsr -mabi=ilp32 -g -Wall
 
 OBJS          := boot.o main.o util.o kprintf.o
 TARGET        := firmware
