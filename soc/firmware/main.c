@@ -1,62 +1,48 @@
 #include <stdint.h>
-#include "soc_reg.h"
-#include "kprintf.h"
 #include "util.h"
 
-// CLINT 暫存器位址 (依你的 bus.v 設定調整)
-#define CLINT_BASE          0x02000000
-#define CLINT_MSIP          (*(volatile uint32_t *)(CLINT_BASE + 0x0000))
-#define CLINT_MTIMECMP_LO   (*(volatile uint32_t *)(CLINT_BASE + 0x4000))
-#define CLINT_MTIMECMP_HI   (*(volatile uint32_t *)(CLINT_BASE + 0x4004))
-#define CLINT_MTIME_LO      (*(volatile uint32_t *)(CLINT_BASE + 0xBFF8))
-#define CLINT_MTIME_HI      (*(volatile uint32_t *)(CLINT_BASE + 0xBFFC))
+#define TIMER_BASE        0x00300000UL
+#define TIMER_CTRL        (*(volatile uint32_t *)(TIMER_BASE + 0x00))
+#define TIMER_PRESCALER   (*(volatile uint32_t *)(TIMER_BASE + 0x04))
+#define TIMER_VALUE       (*(volatile uint32_t *)(TIMER_BASE + 0x08))
+#define TIMER_COMPARE     (*(volatile uint32_t *)(TIMER_BASE + 0x0C))
 
-volatile int irq_count = 0;
+volatile uint32_t irq_count = 0;
 
-static inline void set_next_timer(uint32_t delta) {
-    uint32_t lo = CLINT_MTIME_LO;
-    uint32_t hi = CLINT_MTIME_HI;
-    uint32_t next_lo = lo + delta;
-    // 處理 32-bit 進位
-    if (next_lo < lo) {
-        hi += 1;
-    }
-    // 依 RISC-V 規範，更新 64-bit mtimecmp 時先將高位設為最大值避免誤觸發
-    CLINT_MTIMECMP_HI = 0xFFFFFFFF;
-    CLINT_MTIMECMP_LO = next_lo;
-    CLINT_MTIMECMP_HI = hi;
-}
-
-void __attribute__((interrupt("machine"))) trap_handler(void) {
+void __attribute__((interrupt("machine"), aligned(4))) trap_handler(void) {
     uint32_t mcause;
-    asm volatile("csrr %0, mcause" : "=r"(mcause));
+    asm volatile ("csrr %0, mcause" : "=r"(mcause));
 
-    // Machine Timer Interrupt: bit 31 = 1, code = 7 (0x80000007)
-    if (mcause == 0x80000007) {
+    // interrupt_ctrl.v 觸發 timer 中斷時會設為 interrupt=1, cause=7 (0x80000007)
+    if (mcause == 0x80000007UL) {
         irq_count++;
-        kprintf("Timer IRQ triggered! count = %d\n", irq_count);
-        set_next_timer(1000);
+        // 關鍵：寫入 TIMER_VALUE 會清除 irq_o (irq_o <= 1'b0)，避免一離開 ISR 又立刻重進中斷
+        TIMER_VALUE = 0;
     }
 }
 
 int main(void) {
-    // 1. 設定 mtvec 指向 trap_handler (Direct Mode: mode = 00)
-    asm volatile("csrw mtvec, %0" : : "r"(&trap_handler));
+    // 1. 設定 mtvec 指向 trap_handler
+    asm volatile ("csrw mtvec, %0" :: "r"(&trap_handler));
 
-    // 2. 設定第一次 Timer 中斷時間
-    set_next_timer(1000);
+    // 2. 初始化 Timer 暫存器
+    TIMER_CTRL      = 0;      // 先關閉 Timer 並清除殘留中斷
+    TIMER_PRESCALER = 9;      // 每 10 個 clock 計數 1 次 (0~9)
+    TIMER_VALUE     = 0;      // 計數器歸零
+    TIMER_COMPARE   = 100;    // 計數到 100 時觸發中斷 (約 1000 個 clock 一次)
 
-    // 3. 開啟 mie.MTIE (bit 7) 與全域中斷 mstatus.MIE (bit 3)
-    asm volatile("csrs mie, %0" : : "r"(1 << 7));
-    asm volatile("csrs mstatus, %0" : : "r"(1 << 3));
+    // 3. 開啟 mie.MTIE (bit 7 = 0x80) 與 mstatus.MIE (bit 3 = 0x8)
+    asm volatile ("csrs mie, %0" :: "r"(1 << 7));
+    asm volatile ("csrs mstatus, %0" :: "r"(1 << 3));
 
-    while (irq_count < 3) {
-        // 等待中斷發生
-    }
+    // 4. 啟動 Timer：bit[0]=1 (timer_en), bit[1]=1 (auto_reload) -> 0x3
+    TIMER_CTRL = 0x3;
 
-    // Prevent another timer interrupt from interleaving with the final message.
-    asm volatile("csrc mstatus, %0" : : "r"(1 << 3));
-    kprintf("All 3 Timer Interrupts handled successfully!\n");
+    // 5. 等待觸發 3 次 Timer 中斷
+    while (irq_count < 3);
+
+    // 6. 關閉 Timer 並結束模擬
+    TIMER_CTRL = 0;
     sim_halt();
     return 0;
 }
