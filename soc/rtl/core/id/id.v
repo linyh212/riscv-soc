@@ -273,7 +273,11 @@ module id (
                             csr_addr_o = inst_i[31:20];
                         end
                         default: begin
-                            inst_o = `NOP;
+                            if (inst_i == 32'h30200073) begin
+                                inst_o = inst_i;
+                            end else begin
+                                inst_o = `NOP;
+                            end
                             reg1_raddr_o = `ZERO_REG;
                             reg2_raddr_o = `ZERO_REG;
                             reg1_re_o = `READ_DISABLE;

@@ -9,10 +9,9 @@ C_FW_DIR     = soc/firmware
 C_FW_BIN     = $(C_FW_DIR)/firmware.bin
 
 V_SRC    = soc/rtl/core/test_top.v
-V_SRC   += soc/rtl/device/bus.v
-V_SRC   += soc/rtl/device/console.v
-V_SRC	+= soc/rtl/device/timer.v
+V_SRC   += $(wildcard soc/rtl/device/*.v)
 V_SRC   += soc/rtl/core/pipe_crtl.v
+V_SRC   += soc/rtl/core/interrupt_ctrl.v
 V_SRC   += $(wildcard soc/rtl/core/if/*.v)
 V_SRC   += $(wildcard soc/rtl/core/id/*.v)
 V_SRC   += $(wildcard soc/rtl/core/exe/*.v)

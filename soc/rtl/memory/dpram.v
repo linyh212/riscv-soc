@@ -9,6 +9,7 @@ module dpram #(
     input wire ce_i,
     
     input wire we_i,
+    input wire[3:0] mem_op_i,
     /* verilator lint_off UNUSEDSIGNAL */
     input wire[`ADDR_WIDTH-1:0] addr_i,
     /* verilator lint_on UNUSEDSIGNAL */
@@ -22,14 +23,25 @@ module dpram #(
     output reg[`DATA_WIDTH-1:0] inst_o
 );
     reg[7:0] mem[0:RAM_SIZE-1];
-    wire[RAM_ADDR_WIDTH-1:0] data_addr = {addr_i[RAM_ADDR_WIDTH-1:2], 2'b00};
+    wire[RAM_ADDR_WIDTH-1:0] data_addr = addr_i[RAM_ADDR_WIDTH-1:0];
     wire[RAM_ADDR_WIDTH-1:0] inst_addr = {pc_i[RAM_ADDR_WIDTH-1:2], 2'b00};
     always @(posedge clk_i) begin
         if((ce_i == 1'b1) && (we_i == `WRITE_ENABLE) && (rst_i == 1'b0)) begin
-            mem[data_addr] <= data_i[7:0];
-            mem[data_addr+1] <= data_i[15:8];
-            mem[data_addr+2] <= data_i[23:16];
-            mem[data_addr+3] <= data_i[31:24];
+            case (mem_op_i)
+                `SB: mem[data_addr] <= data_i[7:0];
+                `SH: begin
+                    mem[data_addr] <= data_i[7:0];
+                    mem[data_addr+1] <= data_i[15:8];
+                end
+                `SW: begin
+                    mem[data_addr] <= data_i[7:0];
+                    mem[data_addr+1] <= data_i[15:8];
+                    mem[data_addr+2] <= data_i[23:16];
+                    mem[data_addr+3] <= data_i[31:24];
+                end
+                default: begin
+                end
+            endcase
         end
     end
     always @(*) begin

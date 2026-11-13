@@ -10,7 +10,7 @@ module test_top (
     output wire[`RDATA_WIDTH-1:0]   id_op2_o,
     output wire                     halt_o
 );
-    localparam int NrDevices = 3;
+    localparam int NrDevices = 4;
     localparam int NrHosts = 1;
     localparam int MemSize = 32'h100000;
     localparam int MemAddrWidth = 20;
@@ -19,6 +19,7 @@ module test_top (
     `define DEV_RAM         0
     `define DEV_CONSOLE     1
     `define DEV_TIMER       2
+    `define DEV_CLINT       3
 
     wire                    host_req[NrHosts];
     /* verilator lint_off UNUSEDSIGNAL */
@@ -46,6 +47,9 @@ module test_top (
 
     assign cfg_device_addr_base[`DEV_TIMER] = 32'h00300000;
     assign cfg_device_addr_mask[`DEV_TIMER] = 32'hFFFFFF00;
+
+    assign cfg_device_addr_base[`DEV_CLINT] = 32'h02000000;
+    assign cfg_device_addr_mask[`DEV_CLINT] = 32'hFFFF0000;
     
     // ISA test
     wire                    mem_halt_o;
@@ -145,12 +149,42 @@ module test_top (
     wire                    core_ram_ce_o = (core_ram_w_request_o || (exe_mem_mem_op_o != 4'b0));
 
     wire                    ctrl_flush_jump_o;
+    wire                    ctrl_flush_return_o;
+    wire                    ctrl_flush_int_o;
     reg                     ctrl_flush_jump_delay;
-    wire                    ctrl_flush_fetch_o = ctrl_flush_jump_o | ctrl_flush_jump_delay;
+    wire                    ctrl_flush_fetch_o = ctrl_flush_jump_o | ctrl_flush_return_o | ctrl_flush_int_o | ctrl_flush_jump_delay;
     wire[`ADDR_WIDTH-1:0]   exe_jump_addr_o;
     wire                    exe_jump_enable_o;
     wire                    exe_stallreq_o;
-    wire[`ADDR_WIDTH-1:0]   rom_addr_i = ctrl_flush_jump_o ? ctrl_new_pc_o : pc_wire;
+    wire[`ADDR_WIDTH-1:0]   rom_addr_i = (ctrl_flush_jump_o | ctrl_flush_return_o | ctrl_flush_int_o) ? ctrl_new_pc_o : pc_wire;
+    wire                    exe_mret = (id_exe_inst_o == 32'h30200073);
+    wire                    id_is_control_flow = (if_id_inst_o[6:0] == `INST_TYPE_B) ||
+                                                   (if_id_inst_o[6:0] == `INST_TYPE_JAL) ||
+                                                   (if_id_inst_o[6:0] == `INST_TYPE_JALR);
+    wire[`ADDR_WIDTH-1:0]   interrupt_epc_candidate = exe_jump_enable_o ? exe_jump_addr_o :
+                                                       id_is_control_flow ? if_id_inst_addr_o :
+                                                       (if_id_inst_addr_o != `ZERO ?
+                                                        (if_id_inst_addr_o + 32'd4) : pc_wire);
+    reg                     interrupt_pending;
+    reg[`ADDR_WIDTH-1:0]    interrupt_epc_pending;
+
+    wire                    timer_irq;
+    wire                    clint_timer_irq;
+    wire                    clint_software_irq;
+    wire                    csr_mstatus_ie_o;
+    wire                    csr_mie_external_o;
+    wire                    csr_mie_timer_o;
+    wire                    csr_mie_software_o;
+    wire                    csr_mip_external_o;
+    wire                    csr_mip_timer_o;
+    wire                    csr_mip_software_o;
+    wire[`DATA_WIDTH-1:0]   csr_mtvec_o;
+    wire[`DATA_WIDTH-1:0]   csr_mepc_o;
+    wire                    csr_external_irq = csr_mie_external_o & csr_mip_external_o;
+    wire                    csr_timer_irq = csr_mie_timer_o & csr_mip_timer_o;
+    wire                    csr_software_irq = csr_mie_software_o & csr_mip_software_o;
+    wire                    csr_interrupt_enable = csr_mstatus_ie_o & (csr_external_irq | csr_timer_irq | csr_software_irq);
+    wire[3:0]               csr_interrupt_cause = csr_external_irq ? 4'd11 : csr_timer_irq ? 4'd7 : 4'd3;
     
     wire[`ADDR_WIDTH-1:0]   ctrl_new_pc_o;
 
@@ -160,7 +194,19 @@ module test_top (
         if(rst_i == 1'b1) begin
             ctrl_flush_jump_delay <= 1'b0;
         end else begin
-            ctrl_flush_jump_delay <= ctrl_flush_jump_o;
+            ctrl_flush_jump_delay <= ctrl_flush_jump_o | ctrl_flush_return_o;
+        end
+    end
+
+    always @(posedge clk_i) begin
+        if(rst_i == 1'b1) begin
+            interrupt_pending <= 1'b0;
+            interrupt_epc_pending <= `ZERO;
+        end else if(csr_interrupt_enable && !interrupt_pending) begin
+            interrupt_pending <= 1'b1;
+            interrupt_epc_pending <= interrupt_epc_candidate;
+        end else if(ctrl_flush_int_o) begin
+            interrupt_pending <= 1'b0;
         end
     end
     
@@ -176,7 +222,8 @@ module test_top (
         .clk_i(clk_i),
         .rst_i(rst_i),
         .stall_i(crtl_stall_o[0]),
-        .flush_jump_i(ctrl_flush_jump_o),
+        .flush_jump_i(ctrl_flush_jump_o | ctrl_flush_return_o),
+        .flush_int_i(ctrl_flush_int_o),
         .new_pc_i(ctrl_new_pc_o),
         .pc_o(pc_wire),
         .ce_o(ce_wire)
@@ -354,10 +401,16 @@ module test_top (
         .rst_i(rst_i),
         .stallreq_from_id_i(id_stallreq_o),
         .stallreq_from_exe_i(exe_stallreq_o),
-        .jump_enable_i(exe_jump_enable_o),
+        .jump_en_i(exe_jump_enable_o),
         .jump_addr_i(exe_jump_addr_o),
+        .return_en_i(exe_mret),
+        .return_addr_i(csr_mepc_o),
+        .int_en_i(interrupt_pending),
+        .isr_pc_i(csr_mtvec_o),
         .stall_o(crtl_stall_o),
         .flush_jump_o(ctrl_flush_jump_o),
+        .flush_return_o(ctrl_flush_return_o),
+        .flush_int_o(ctrl_flush_int_o),
         .new_pc_o(ctrl_new_pc_o)
     );
     csr csr0 (
@@ -368,7 +421,26 @@ module test_top (
         .we_i(mem_wb_csr_we_o),
         .waddr_i(mem_wb_csr_waddr_o),
         .wdata_i(mem_wb_csr_rdata_o),
-        .instret_incr_i(1'b0)
+        .instret_incr_i(1'b0),
+        .irq_timer_i(timer_irq | clint_timer_irq),
+        .irq_software_i(clint_software_irq),
+        .irq_external_i(1'b0),
+        .mstatus_ie_o(csr_mstatus_ie_o),
+        .mie_external_o(csr_mie_external_o),
+        .mie_timer_o(csr_mie_timer_o),
+        .mie_software_o(csr_mie_software_o),
+        .mip_external_o(csr_mip_external_o),
+        .mip_timer_o(csr_mip_timer_o),
+        .mip_software_o(csr_mip_software_o),
+        .mtvec_o(csr_mtvec_o),
+        .mepc_o(csr_mepc_o),
+        .interrupt_type_i(1'b1),
+        .cause_we_i(ctrl_flush_int_o),
+        .cause_i(csr_interrupt_cause),
+        .epc_we_i(ctrl_flush_int_o),
+        .epc_i(interrupt_epc_pending),
+        .mstatus_ie_clear_i(ctrl_flush_int_o),
+        .mstatus_ie_set_i(ctrl_flush_return_o)
     );
     assign host_req[`HOST_CORE_PORT] = core_ram_ce_o;
     assign host_addr[`HOST_CORE_PORT] = core_ram_addr_o;
@@ -408,6 +480,7 @@ module test_top (
         .we_i(device_we[`DEV_RAM]),
         .data_i(device_wdata[`DEV_RAM]),
         .data_o(device_rdata[`DEV_RAM]),
+        .mem_op_i(exe_mem_mem_op_o),
         .inst_ce_i(ce_wire && (crtl_stall_o[0] == `NOSTOP)),
         .pc_i(rom_addr_i),
         .inst_o(if_inst_o)
@@ -425,9 +498,6 @@ module test_top (
         .wdata_i(device_wdata[`DEV_CONSOLE]),
         .halt_o(console_halt_o)
     );
-    /* verilator lint_off UNUSEDSIGNAL */
-    wire timer_irq;
-    /* verilator lint_on UNUSEDSIGNAL */
     timer timer0 (
         .clk_i(clk_i),
         .rst_i(rst_i),
@@ -437,5 +507,17 @@ module test_top (
         .wdata_i(device_wdata[`DEV_TIMER]),
         .rdata_o(device_rdata[`DEV_TIMER]),
         .irq_o(timer_irq)
+    );
+
+    clint clint0 (
+        .clk_i(clk_i),
+        .rst_i(rst_i),
+        .req_i(device_req[`DEV_CLINT]),
+        .we_i(device_we[`DEV_CLINT]),
+        .addr_i(device_addr[`DEV_CLINT]),
+        .data_i(device_wdata[`DEV_CLINT]),
+        .data_o(device_rdata[`DEV_CLINT]),
+        .timer_irq_o(clint_timer_irq),
+        .software_irq_o(clint_software_irq)
     );
 endmodule

@@ -35,6 +35,7 @@ int main(int argc, char** argv) {
     tfp->open("wave.vcd");
 
     std::string bin_file = (argc > 1) ? argv[1] : "soc/firmware/isa_tests/test.bin";
+    bool use_gp_result = bin_file.find("soc/firmware/isa_tests/test.bin") != std::string::npos;
     sim_mem_load_bin(top->test_top->data_ram0, top->test_top->data_ram0, bin_file);
 
     // Reset 階段
@@ -53,27 +54,36 @@ int main(int argc, char** argv) {
         step_clock(top.get(), tfp.get());
         current_cycle++;
 
-        // 1. 檢查 C 語言 Console MMIO 停機訊號 (Console -> top -> halt_o)
-        if (top->halt_o) {
-            std::cout << "\n[RESULT] PASS (Halted by console software request)" << std::endl;
-            finished = true;
-            exit_code = 0;
-            break;
+        if (use_gp_result) {
+            uint32_t gp = top->test_top->regfile0->regs[3];
+            if (gp == 1) {
+                std::cout << "[RESULT] PASS" << std::endl;
+                finished = true;
+                exit_code = 0;
+                break;
+            } else if (gp > 1 && (gp & 1U)) {
+                std::cout << "[RESULT] FAIL (Test Case #" << (gp >> 1) << ")" << std::endl;
+                finished = true;
+                exit_code = static_cast<int>(gp >> 1);
+                break;
+            }
         }
 
-        // 2. 檢查 ISA Tests (Assembly) 的 gp (x3) 暫存器狀態
-        uint32_t gp = top->test_top->regfile0->regs[3];
-
-        if (gp == 1) {
-            std::cout << "[RESULT] PASS" << std::endl;
+        // ISA tests use x3 as the in-progress case number, then set its final
+        // pass/fail code before asking the console to halt.
+        if (top->test_top->__PVT__console_halt_o) {
+            uint32_t gp = top->test_top->regfile0->regs[3];
+            if (gp > 1 && (gp & 1U)) {
+                std::cout << "\n[RESULT] FAIL (Test Case #" << (gp >> 1) << ")" << std::endl;
+                exit_code = static_cast<int>(gp >> 1);
+            } else if (gp == 1) {
+                std::cout << "\n[RESULT] PASS" << std::endl;
+                exit_code = 0;
+            } else {
+                std::cout << "\n[RESULT] PASS (Halted by console software request)" << std::endl;
+                exit_code = 0;
+            }
             finished = true;
-            exit_code = 0;
-            break;
-        } else if (gp > 1) {
-            uint32_t fail_case = gp >> 1;
-            std::cout << "[RESULT] FAIL (Test Case #" << fail_case << ")" << std::endl;
-            finished = true;
-            exit_code = static_cast<int>(fail_case);
             break;
         }
     }

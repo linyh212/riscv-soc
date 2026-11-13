@@ -75,7 +75,7 @@ module div #(
                         if(b_i != {XLEN{1'b0}} && !(is_signed_i && a_i == 32'h8000_0000 && b_i == 32'hFFFF_FFFF)) begin
                             reg[XLEN-1:0] final_quot;
                             reg[XLEN-1:0] final_rem;
-                            final_quot = (dividend_neg ^ divisor_neg)? (~shift_reg[XLEN-1:0] + 1'b1) : shift_reg[XLEN-1:0];
+                            final_quot = (dividend_neg ^ divisor_neg)? (~shift_reg[XLEN:1] + 1'b1) : shift_reg[XLEN:1];
                             final_rem = dividend_neg ? (~shift_reg[XLEN*2:XLEN+1] + 1'b1) : shift_reg[XLEN*2:XLEN+1];
                             result_o <= {final_rem, final_quot};
                         end
