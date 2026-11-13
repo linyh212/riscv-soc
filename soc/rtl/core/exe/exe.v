@@ -30,7 +30,11 @@ module exe (
     input wire[`DATA_WIDTH-1:0] mem_csr_wdata_i,
     output reg csr_we_o,
     output reg[`CSR_ADDR_WIDTH-1:0] csr_waddr_o,
-    output reg[`DATA_WIDTH-1:0] csr_wdata_o
+    output reg[`DATA_WIDTH-1:0] csr_wdata_o,
+    input wire[`DATA_WIDTH-1:0] exception_i,
+    output wire[`DATA_WIDTH-1:0] exception_o,
+    input wire[`ADDR_WIDTH-1:0] exception_pc_i,
+    output wire[`ADDR_WIDTH-1:0] exception_pc_o
 );
     wire[6:0] opcode = inst_i[6:0];
     wire[2:0] funct3 = inst_i[14:12];
@@ -49,6 +53,8 @@ module exe (
     wire[3:0] sl_mem_op_o;
 
     assign stallreq_o = m_stall_o;
+    assign exception_o = exception_i;
+    assign exception_pc_o = exception_pc_i;
     
     assign csr_raddr_o = csr_addr_i;
     reg[`DATA_WIDTH-1:0] csr_rdata_forwarded;

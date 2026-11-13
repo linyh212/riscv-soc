@@ -127,4 +127,5 @@
 `define INST_CSRRWI             3'b101
 `define INST_CSRRSI             3'b110
 `define INST_CSRRCI             3'b111
+`define INST_CSR_PRIV           3'b000
 `endif

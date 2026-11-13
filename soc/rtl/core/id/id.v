@@ -33,7 +33,9 @@ module id (
     output reg stallreq_o,
 
     output reg csr_we_o,
-    output reg[`CSR_ADDR_WIDTH-1:0] csr_addr_o
+    output reg[`CSR_ADDR_WIDTH-1:0] csr_addr_o,
+    output wire[`DATA_WIDTH-1:0] exception_o,
+    output reg[`ADDR_WIDTH-1:0] exception_pc_o
 );
 /* verilator lint_on UNUSEDSIGNAL */
     wire[6:0] opcode = inst_i[6:0];
@@ -41,6 +43,7 @@ module id (
     wire[4:0] rd = inst_i[11:7];
     wire[4:0] rs1 = inst_i[19:15];
     wire[4:0] rs2 = inst_i[24:20];
+    wire[6:0] funct7 = inst_i[31:25];
 
     // Load-Use Hazard
     wire is_load_hazard = pre_inst_is_load_i && (exe_rd_i != `ZERO_REG) && ((reg1_re_o && (rs1 == exe_rd_i)) || (reg2_re_o && (rs2 == exe_rd_i)));
@@ -78,6 +81,10 @@ module id (
 
     reg[`RDATA_WIDTH-1:0] op1_o_final;
     reg[`RDATA_WIDTH-1:0] op2_o_final;
+
+    reg except_mret;
+    reg except_ecall;
+    assign exception_o = {30'b0, except_ecall, except_mret};
 
     id_type_i INST_TYPE_I(
         .inst_i (inst_i),
@@ -132,6 +139,9 @@ module id (
             reg_waddr_o = `ZERO_REG;
             csr_we_o = `WRITE_DISABLE;
             csr_addr_o = {`CSR_ADDR_WIDTH{1'b0}};
+            except_mret = 1'b0;
+            except_ecall = 1'b0;
+            exception_pc_o = `ZERO;
         end else begin
             inst_o = `NOP;
             reg1_raddr_o = `ZERO_REG;
@@ -144,6 +154,9 @@ module id (
             reg_waddr_o = `ZERO_REG;
             csr_we_o = `WRITE_DISABLE;
             csr_addr_o = {`CSR_ADDR_WIDTH{1'b0}};
+            except_mret = 1'b0;
+            except_ecall = 1'b0;
+            exception_pc_o = `ZERO;
             case (opcode)
                 `INST_TYPE_I: begin
                     inst_o = inst_i;
@@ -271,6 +284,18 @@ module id (
                             op2_o_final = `ZERO;
                             csr_we_o = (inst_i[19:15] == 5'b0)? `WRITE_DISABLE : `WRITE_ENABLE;
                             csr_addr_o = inst_i[31:20];
+                        end
+                        `INST_CSR_PRIV: begin
+                            inst_o = inst_i;
+                            if ((funct7 == 7'b0011000) && (rs2 == 5'b00010) &&
+                                (rs1 == 5'b0) && (rd == 5'b0)) begin
+                                except_mret = 1'b1;
+                                exception_pc_o = inst_addr_i;
+                            end else if ((funct7 == 7'b0000000) && (rs2 == 5'b0) &&
+                                         (rs1 == 5'b0) && (rd == 5'b0)) begin
+                                except_ecall = 1'b1;
+                                exception_pc_o = inst_addr_i;
+                            end
                         end
                         default: begin
                             if (inst_i == 32'h30200073) begin

@@ -5,6 +5,7 @@ module interrupt_ctrl (
     input wire rst_i,
     input wire[`DATA_WIDTH-1:0] exception_i,
     input wire[`DATA_WIDTH-1:0] pc_i,
+    input wire[`DATA_WIDTH-1:0] exception_pc_i,
     input wire mstatus_ie_i,
     input wire mie_external_i,
     input wire mie_timer_i,
@@ -29,6 +30,8 @@ module interrupt_ctrl (
     localparam TRAP_TAKEN = 4'b0100;
     localparam TRAP_RETURN = 4'b1000;
     reg[3:0] S, S_nxt;
+    reg exception;
+    reg[`DATA_WIDTH-1:0] exception_pc;
     wire mret, ecall;
     assign {ecall, mret} = exception_i[1:0];
     wire eip = mie_external_i & mip_external_i;
@@ -37,8 +40,15 @@ module interrupt_ctrl (
     wire ip = eip | tip | sip;
     wire trap_happened = (mstatus_ie_i & ip) | ecall;
     always @(posedge clk_i) begin
-        if(rst_i == 1'b1) S <= RESET;
-        else S <= S_nxt;
+        if(rst_i == 1'b1) begin
+            S <= RESET;
+            exception <= 1'b0;
+            exception_pc <= `ZERO;
+        end else begin
+            S <= S_nxt;
+            exception <= (|exception_i);
+            if (|exception_i) exception_pc <= exception_pc_i;
+        end
     end
     always @(*) begin
         case (S)
@@ -90,7 +100,7 @@ module interrupt_ctrl (
                 flush_o = 1'b1;
                 new_pc_o = trap_mux_out;
                 epc_we_o = 1'b1;
-                epc_o = pc_i;
+                epc_o = exception ? (exception_pc - 32'd4) : pc_i;
                 cause_we_o = 1'b1;
                 mstatus_ie_clear_o = 1'b1;
             end

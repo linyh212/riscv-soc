@@ -22,7 +22,11 @@ module id_exe (
     input wire csr_we_i,
     input wire[`CSR_ADDR_WIDTH-1:0] csr_addr_i,
     output reg csr_we_o,
-    output reg[`CSR_ADDR_WIDTH-1:0] csr_addr_o
+    output reg[`CSR_ADDR_WIDTH-1:0] csr_addr_o,
+    input wire[`DATA_WIDTH-1:0] exception_i,
+    output reg[`DATA_WIDTH-1:0] exception_o,
+    input wire[`ADDR_WIDTH-1:0] exception_pc_i,
+    output reg[`ADDR_WIDTH-1:0] exception_pc_o
 );
     always @(posedge clk_i) begin
         if(rst_i == 1'b1 || flush_jump_i == 1'b1) begin
@@ -34,6 +38,8 @@ module id_exe (
             reg_waddr_o <= `ZERO_REG;
             csr_we_o <= `WRITE_DISABLE;
             csr_addr_o <= {`CSR_ADDR_WIDTH{1'b0}};
+            exception_o <= `ZERO;
+            exception_pc_o <= `ZERO;
         end else if(stall_i[3] == `STOP) begin
             inst_o <= inst_o;
             inst_addr_o <= inst_addr_o;
@@ -43,6 +49,8 @@ module id_exe (
             reg_waddr_o <= reg_waddr_o;
             csr_we_o <= csr_we_o;
             csr_addr_o <= csr_addr_o;
+            exception_o <= exception_o;
+            exception_pc_o <= exception_pc_o;
         end else if(stall_i[2] == `STOP) begin
             inst_o <= `NOP;
             inst_addr_o <= `ZERO;
@@ -52,6 +60,8 @@ module id_exe (
             reg_waddr_o <= `ZERO_REG;
             csr_we_o <= `WRITE_DISABLE;
             csr_addr_o <= {`CSR_ADDR_WIDTH{1'b0}};
+            exception_o <= `ZERO;
+            exception_pc_o <= `ZERO;
         end else begin
             inst_o <= inst_i;
             inst_addr_o <= inst_addr_i;
@@ -61,6 +71,8 @@ module id_exe (
             reg_waddr_o <= reg_waddr_i;
             csr_we_o <= csr_we_i;
             csr_addr_o <= csr_addr_i;
+            exception_o <= exception_i;
+            exception_pc_o <= exception_pc_i;
         end
     end
 endmodule

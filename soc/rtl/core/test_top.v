@@ -78,6 +78,8 @@ module test_top (
     wire[`RADDR_WIDTH-1:0]      id_reg_waddr_o;
     wire                        id_csr_we_o;
     wire[`CSR_ADDR_WIDTH-1:0]   id_csr_addr_o;
+    wire[`DATA_WIDTH-1:0]       id_exception_o;
+    wire[`ADDR_WIDTH-1:0]       id_exception_pc_o;
 
     // ID/EXE to EXE
     wire[`DATA_WIDTH-1:0]       id_exe_inst_o;
@@ -88,6 +90,8 @@ module test_top (
     wire[`RADDR_WIDTH-1:0]      id_exe_reg_waddr_o;
     wire                        id_exe_csr_we_o;
     wire[`CSR_ADDR_WIDTH-1:0]   id_exe_csr_addr_o;
+    wire[`DATA_WIDTH-1:0]       id_exe_exception_o;
+    wire[`ADDR_WIDTH-1:0]       id_exe_exception_pc_o;
 
     // EXE <-> CSR (READ)
     wire[`CSR_ADDR_WIDTH-1:0]   exe_csr_raddr_o;
@@ -116,6 +120,10 @@ module test_top (
     wire                        exe_mem_csr_we_o;
     wire[`CSR_ADDR_WIDTH-1:0]   exe_mem_csr_waddr_o;
     wire[`DATA_WIDTH-1:0]       csr_mem_csr_wdata_o;
+    wire[`DATA_WIDTH-1:0]       exe_mem_exception_o;
+    wire[`ADDR_WIDTH-1:0]       exe_mem_exception_pc_o;
+    wire[`DATA_WIDTH-1:0]       exe_exception_o;
+    wire[`ADDR_WIDTH-1:0]       exe_exception_pc_o;
 
     // MEM to MEM/WB
     wire[`RADDR_WIDTH-1:0]      mem_reg_waddr_o;
@@ -124,6 +132,8 @@ module test_top (
     wire                        mem_csr_we_o;
     wire[`CSR_ADDR_WIDTH-1:0]   mem_csr_waddr_o;
     wire[`DATA_WIDTH-1:0]       mem_csr_wdata_o;
+    wire[`DATA_WIDTH-1:0]       mem_exception_o;
+    wire[`ADDR_WIDTH-1:0]       mem_exception_pc_o;
 
     // MEM/WB to WB (Regfile Write-Back)
     wire[`RADDR_WIDTH-1:0]  mem_wb_reg_waddr_o;
@@ -149,24 +159,13 @@ module test_top (
     wire                    core_ram_ce_o = (core_ram_w_request_o || (exe_mem_mem_op_o != 4'b0));
 
     wire                    ctrl_flush_jump_o;
-    wire                    ctrl_flush_return_o;
     wire                    ctrl_flush_int_o;
     reg                     ctrl_flush_jump_delay;
-    wire                    ctrl_flush_fetch_o = ctrl_flush_jump_o | ctrl_flush_return_o | ctrl_flush_int_o | ctrl_flush_jump_delay;
+    wire                    ctrl_flush_fetch_o = ctrl_flush_jump_o | ctrl_flush_int_o | ctrl_flush_jump_delay;
     wire[`ADDR_WIDTH-1:0]   exe_jump_addr_o;
     wire                    exe_jump_enable_o;
     wire                    exe_stallreq_o;
-    wire[`ADDR_WIDTH-1:0]   rom_addr_i = (ctrl_flush_jump_o | ctrl_flush_return_o | ctrl_flush_int_o) ? ctrl_new_pc_o : pc_wire;
-    wire                    exe_mret = (id_exe_inst_o == 32'h30200073);
-    wire                    id_is_control_flow = (if_id_inst_o[6:0] == `INST_TYPE_B) ||
-                                                   (if_id_inst_o[6:0] == `INST_TYPE_JAL) ||
-                                                   (if_id_inst_o[6:0] == `INST_TYPE_JALR);
-    wire[`ADDR_WIDTH-1:0]   interrupt_epc_candidate = exe_jump_enable_o ? exe_jump_addr_o :
-                                                       id_is_control_flow ? if_id_inst_addr_o :
-                                                       (if_id_inst_addr_o != `ZERO ?
-                                                        (if_id_inst_addr_o + 32'd4) : pc_wire);
-    reg                     interrupt_pending;
-    reg[`ADDR_WIDTH-1:0]    interrupt_epc_pending;
+    wire[`ADDR_WIDTH-1:0]   rom_addr_i = (ctrl_flush_jump_o | ctrl_flush_int_o) ? ctrl_new_pc_o : pc_wire;
 
     wire                    timer_irq;
     wire                    clint_timer_irq;
@@ -180,12 +179,15 @@ module test_top (
     wire                    csr_mip_software_o;
     wire[`DATA_WIDTH-1:0]   csr_mtvec_o;
     wire[`DATA_WIDTH-1:0]   csr_mepc_o;
-    wire                    csr_external_irq = csr_mie_external_o & csr_mip_external_o;
-    wire                    csr_timer_irq = csr_mie_timer_o & csr_mip_timer_o;
-    wire                    csr_software_irq = csr_mie_software_o & csr_mip_software_o;
-    wire                    csr_interrupt_enable = csr_mstatus_ie_o & (csr_external_irq | csr_timer_irq | csr_software_irq);
-    wire[3:0]               csr_interrupt_cause = csr_external_irq ? 4'd11 : csr_timer_irq ? 4'd7 : 4'd3;
-    
+    wire                    interrupt_type_o;
+    wire                    interrupt_cause_we_o;
+    wire[3:0]               interrupt_trap_cause_o;
+    wire                    interrupt_epc_we_o;
+    wire[`DATA_WIDTH-1:0]   interrupt_epc_o;
+    wire                    interrupt_mstatus_ie_clear_o;
+    wire                    interrupt_mstatus_ie_set_o;
+    wire                    interrupt_flush_o;
+    wire[`DATA_WIDTH-1:0]   interrupt_new_pc_o;
     wire[`ADDR_WIDTH-1:0]   ctrl_new_pc_o;
 
     assign pc_o = pc_wire;
@@ -194,19 +196,7 @@ module test_top (
         if(rst_i == 1'b1) begin
             ctrl_flush_jump_delay <= 1'b0;
         end else begin
-            ctrl_flush_jump_delay <= ctrl_flush_jump_o | ctrl_flush_return_o;
-        end
-    end
-
-    always @(posedge clk_i) begin
-        if(rst_i == 1'b1) begin
-            interrupt_pending <= 1'b0;
-            interrupt_epc_pending <= `ZERO;
-        end else if(csr_interrupt_enable && !interrupt_pending) begin
-            interrupt_pending <= 1'b1;
-            interrupt_epc_pending <= interrupt_epc_candidate;
-        end else if(ctrl_flush_int_o) begin
-            interrupt_pending <= 1'b0;
+            ctrl_flush_jump_delay <= ctrl_flush_jump_o;
         end
     end
     
@@ -222,7 +212,7 @@ module test_top (
         .clk_i(clk_i),
         .rst_i(rst_i),
         .stall_i(crtl_stall_o[0]),
-        .flush_jump_i(ctrl_flush_jump_o | ctrl_flush_return_o),
+        .flush_jump_i(ctrl_flush_jump_o),
         .flush_int_i(ctrl_flush_int_o),
         .new_pc_i(ctrl_new_pc_o),
         .pc_o(pc_wire),
@@ -266,7 +256,9 @@ module test_top (
         .reg_waddr_o(id_reg_waddr_o),
         .stallreq_o(id_stallreq_o),
         .csr_we_o(id_csr_we_o),
-        .csr_addr_o(id_csr_addr_o)
+        .csr_addr_o(id_csr_addr_o),
+        .exception_o(id_exception_o),
+        .exception_pc_o(id_exception_pc_o)
     );
     regfile regfile0 (
         .clk_i(clk_i),
@@ -301,7 +293,11 @@ module test_top (
         .csr_we_i(id_csr_we_o),
         .csr_addr_i(id_csr_addr_o),
         .csr_we_o(id_exe_csr_we_o),
-        .csr_addr_o(id_exe_csr_addr_o)
+        .csr_addr_o(id_exe_csr_addr_o),
+        .exception_i(id_exception_o),
+        .exception_o(id_exe_exception_o),
+        .exception_pc_i(id_exception_pc_o),
+        .exception_pc_o(id_exe_exception_pc_o)
     );
     exe exe0 (
         .clk_i(clk_i),
@@ -331,7 +327,11 @@ module test_top (
         .mem_csr_wdata_i(mem_csr_wdata_o),
         .csr_we_o(exe_csr_we_o),
         .csr_waddr_o(exe_csr_waddr_o),
-        .csr_wdata_o(csr_csr_wdata_o)
+        .csr_wdata_o(csr_csr_wdata_o),
+        .exception_i(id_exe_exception_o),
+        .exception_o(exe_exception_o),
+        .exception_pc_i(id_exe_exception_pc_o),
+        .exception_pc_o(exe_exception_pc_o)
     );
     exe_mem exe_mem0 (
         .clk_i(clk_i),
@@ -355,7 +355,11 @@ module test_top (
         .csr_wdata_i(csr_csr_wdata_o),
         .csr_we_o(exe_mem_csr_we_o),
         .csr_waddr_o(exe_mem_csr_waddr_o),
-        .csr_wdata_o(csr_mem_csr_wdata_o)
+        .csr_wdata_o(csr_mem_csr_wdata_o),
+        .exception_i(exe_exception_o),
+        .exception_o(exe_mem_exception_o),
+        .exception_pc_i(exe_exception_pc_o),
+        .exception_pc_o(exe_mem_exception_pc_o)
     );
     mem mem0 (
         .rst_i(rst_i),
@@ -379,7 +383,11 @@ module test_top (
         .csr_wdata_i(csr_mem_csr_wdata_o),
         .csr_we_o(mem_csr_we_o),
         .csr_waddr_o(mem_csr_waddr_o),
-        .csr_wdata_o(mem_csr_wdata_o)
+        .csr_wdata_o(mem_csr_wdata_o),
+        .exception_i(exe_mem_exception_o),
+        .exception_o(mem_exception_o),
+        .exception_pc_i(exe_mem_exception_pc_o),
+        .exception_pc_o(mem_exception_pc_o)
     );
     mem_wb mem_wb0 (
         .clk_i(clk_i),
@@ -397,19 +405,41 @@ module test_top (
         .csr_waddr_o(mem_wb_csr_waddr_o),
         .csr_wdata_o(mem_wb_csr_rdata_o)
     );
+    interrupt_ctrl interrupt_ctrl0 (
+        .clk_i(clk_i),
+        .rst_i(rst_i),
+        .exception_i(mem_exception_o),
+        .pc_i(pc_wire),
+        .exception_pc_i(mem_exception_pc_o + 32'd4),
+        .mstatus_ie_i(csr_mstatus_ie_o),
+        .mie_external_i(csr_mie_external_o),
+        .mie_timer_i(csr_mie_timer_o),
+        .mie_sw_i(csr_mie_software_o),
+        .mip_external_i(csr_mip_external_o),
+        .mip_timer_i(csr_mip_timer_o),
+        .mip_sw_i(csr_mip_software_o),
+        .mtvec_i(csr_mtvec_o),
+        .epc_i(csr_mepc_o),
+        .interrupt_type_o(interrupt_type_o),
+        .cause_we_o(interrupt_cause_we_o),
+        .trap_cause_o(interrupt_trap_cause_o),
+        .epc_we_o(interrupt_epc_we_o),
+        .epc_o(interrupt_epc_o),
+        .mstatus_ie_clear_o(interrupt_mstatus_ie_clear_o),
+        .mstatus_ie_set_o(interrupt_mstatus_ie_set_o),
+        .flush_o(interrupt_flush_o),
+        .new_pc_o(interrupt_new_pc_o)
+    );
     pipe_crtl pipe_crtl0 (
         .rst_i(rst_i),
         .stallreq_from_id_i(id_stallreq_o),
         .stallreq_from_exe_i(exe_stallreq_o),
         .jump_en_i(exe_jump_enable_o),
         .jump_addr_i(exe_jump_addr_o),
-        .return_en_i(exe_mret),
-        .return_addr_i(csr_mepc_o),
-        .int_en_i(interrupt_pending),
-        .isr_pc_i(csr_mtvec_o),
+        .int_en_i(interrupt_flush_o),
+        .isr_pc_i(interrupt_new_pc_o),
         .stall_o(crtl_stall_o),
         .flush_jump_o(ctrl_flush_jump_o),
-        .flush_return_o(ctrl_flush_return_o),
         .flush_int_o(ctrl_flush_int_o),
         .new_pc_o(ctrl_new_pc_o)
     );
@@ -434,13 +464,13 @@ module test_top (
         .mip_software_o(csr_mip_software_o),
         .mtvec_o(csr_mtvec_o),
         .mepc_o(csr_mepc_o),
-        .interrupt_type_i(1'b1),
-        .cause_we_i(ctrl_flush_int_o),
-        .cause_i(csr_interrupt_cause),
-        .epc_we_i(ctrl_flush_int_o),
-        .epc_i(interrupt_epc_pending),
-        .mstatus_ie_clear_i(ctrl_flush_int_o),
-        .mstatus_ie_set_i(ctrl_flush_return_o)
+        .interrupt_type_i(interrupt_type_o),
+        .cause_we_i(interrupt_cause_we_o),
+        .cause_i(interrupt_trap_cause_o),
+        .epc_we_i(interrupt_epc_we_o),
+        .epc_i(interrupt_epc_o),
+        .mstatus_ie_clear_i(interrupt_mstatus_ie_clear_o),
+        .mstatus_ie_set_i(interrupt_mstatus_ie_set_o)
     );
     assign host_req[`HOST_CORE_PORT] = core_ram_ce_o;
     assign host_addr[`HOST_CORE_PORT] = core_ram_addr_o;

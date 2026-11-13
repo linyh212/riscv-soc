@@ -23,7 +23,11 @@ module exe_mem (
     output reg[3:0] mem_op_o,
     output reg csr_we_o,
     output reg[`CSR_ADDR_WIDTH-1:0] csr_waddr_o,
-    output reg[`DATA_WIDTH-1:0] csr_wdata_o
+    output reg[`DATA_WIDTH-1:0] csr_wdata_o,
+    input wire[`DATA_WIDTH-1:0] exception_i,
+    output reg[`DATA_WIDTH-1:0] exception_o,
+    input wire[`ADDR_WIDTH-1:0] exception_pc_i,
+    output reg[`ADDR_WIDTH-1:0] exception_pc_o
 );
     always @(posedge clk_i) begin
         if(rst_i == 1'b1) begin
@@ -37,6 +41,8 @@ module exe_mem (
             csr_we_o <= `WRITE_DISABLE;
             csr_waddr_o <= {`CSR_ADDR_WIDTH{1'b0}};
             csr_wdata_o <= `ZERO;
+            exception_o <= `ZERO;
+            exception_pc_o <= `ZERO;
         end else begin
             reg_waddr_o <= reg_waddr_i;
             reg_we_o <= reg_we_i;
@@ -48,6 +54,8 @@ module exe_mem (
             csr_we_o <= csr_we_i;
             csr_waddr_o <= csr_waddr_i;
             csr_wdata_o <= csr_wdata_i;
+            exception_o <= exception_i;
+            exception_pc_o <= exception_pc_i;
         end
     end
 endmodule
