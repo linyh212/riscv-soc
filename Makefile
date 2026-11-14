@@ -7,6 +7,8 @@ TARGET_BIN = $(BUILD_DIR)/V$(TOP)
 ISA_TEST_BIN = soc/firmware/isa_tests/test.bin
 C_FW_DIR     = soc/firmware
 C_FW_BIN     = $(C_FW_DIR)/firmware.bin
+COREMARK_DIR = soc/coremark
+COREMARK_BIN = $(COREMARK_DIR)/core_main.bin
 
 V_SRC    = soc/rtl/core/test_top.v
 V_SRC   += $(wildcard soc/rtl/device/*.v)
@@ -24,7 +26,7 @@ SIM_SRC  = $(wildcard soc/sim/*.cpp)
 
 INC      = -Isoc/rtl/include
 
-.PHONY: all run run_c test wave clean build_c_fw
+.PHONY: all run run_c coremark test wave clean build_c_fw build_cm
 
 all: run
 
@@ -36,6 +38,9 @@ $(ISA_TEST_BIN):
 
 build_c_fw:
 	$(MAKE) -C $(C_FW_DIR)
+
+build_cm:
+	$(MAKE) -C $(COREMARK_DIR)
 
 # --------------------------------------------------
 # Verilator 硬體轉譯與編譯
@@ -55,9 +60,13 @@ $(TARGET_BIN): $(V_SRC) $(SIM_SRC)
 run: $(ISA_TEST_BIN) $(TARGET_BIN)
 	./$(TARGET_BIN) $(ISA_TEST_BIN)
 
-run_c: build_c_fw $(TARGET_BIN)
+run_c: $(TARGET_BIN)
 	@mkdir -p log
 	./$(TARGET_BIN) $(C_FW_BIN)
+
+coremark: $(TARGET_BIN)
+	@mkdir -p log
+	./$(TARGET_BIN) $(COREMARK_BIN)
 
 test: $(TARGET_BIN)
 	$(MAKE) -C soc/firmware/isa_tests
@@ -69,4 +78,5 @@ wave: run
 clean:
 	if [ -f soc/firmware/isa_tests/Makefile ]; then $(MAKE) -C soc/firmware/isa_tests clean; fi
 	if [ -f $(C_FW_DIR)/Makefile ]; then $(MAKE) -C $(C_FW_DIR) clean; fi
+	if [ -f $(COREMARK_DIR)/Makefile ]; then $(MAKE) -C $(COREMARK_DIR) clean; fi
 	rm -rf $(BUILD_DIR) wave.vcd log/

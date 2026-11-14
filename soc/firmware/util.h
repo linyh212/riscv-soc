@@ -7,5 +7,6 @@
 #define DEV_READ(addr)       (*((volatile uint32_t *)(addr)))
 
 void sim_halt(void);
+uint64_t get_cycle_value(void);
 
 #endif

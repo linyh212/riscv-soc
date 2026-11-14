@@ -2,6 +2,7 @@
 #include <fstream>
 #include <memory>
 #include <string>
+#include <cstdint>
 #include <verilated.h>
 #include <verilated_vcd_c.h>
 #include "Vtest_top.h"
@@ -28,14 +29,18 @@ int main(int argc, char** argv) {
     Verilated::commandArgs(argc, argv);
     auto top = std::make_unique<Vtest_top>();
 
-    // 建立波形紀錄
-    Verilated::traceEverOn(true);
-    auto tfp = std::make_unique<VerilatedVcdC>();
-    top->trace(tfp.get(), 99);
-    tfp->open("wave.vcd");
-
     std::string bin_file = (argc > 1) ? argv[1] : "soc/firmware/isa_tests/test.bin";
     bool use_gp_result = bin_file.find("soc/firmware/isa_tests/test.bin") != std::string::npos;
+
+    // 僅在執行簡短 ISA 測試時建立波形紀錄，避免 CoreMark 產生過大 wave.vcd 拖慢速度
+    std::unique_ptr<VerilatedVcdC> tfp = nullptr;
+    if (use_gp_result) {
+        Verilated::traceEverOn(true);
+        tfp = std::make_unique<VerilatedVcdC>();
+        top->trace(tfp.get(), 99);
+        tfp->open("wave.vcd");
+    }
+
     sim_mem_load_bin(top->test_top->data_ram0, top->test_top->data_ram0, bin_file);
 
     // Reset 階段
@@ -45,8 +50,9 @@ int main(int argc, char** argv) {
     }
     top->rst_i = 0;
 
-    int max_cycles = 100000;
-    int current_cycle = 0;
+    // 放寬週期上限至 10 億個 cycles 以容納 CoreMark 完整跑分
+    uint64_t max_cycles = use_gp_result ? 100000ULL : 1000000000ULL;
+    uint64_t current_cycle = 0;
     bool finished = false;
     int exit_code = -1;
 
@@ -93,7 +99,7 @@ int main(int argc, char** argv) {
     }
 
     top->final();
-    tfp->close();
+    if (tfp) tfp->close();
 
     return exit_code;
 }

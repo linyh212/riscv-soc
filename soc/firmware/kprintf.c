@@ -15,6 +15,29 @@ int put_str(const char *str)
     return 0;
 }
 
+static void put_unsigned_decimal(unsigned long magnitude)
+{
+    static const unsigned long decimal_power[10] = {
+        1000000000UL, 100000000UL, 10000000UL, 1000000UL, 100000UL,
+        10000UL, 1000UL, 100UL, 10UL, 1UL};
+    int digits = 0;
+
+    for (int i = 0; i < 10; i++)
+    {
+        int digit = 0;
+        while (magnitude >= decimal_power[i])
+        {
+            magnitude -= decimal_power[i];
+            digit++;
+        }
+        if (digit != 0 || digits != 0 || i == 9)
+        {
+            put_char('0' + digit);
+            digits = 1;
+        }
+    }
+}
+
 void put_hex(unsigned int h)
 {
     int cur_digit;
@@ -67,30 +90,21 @@ static void _kprintf(const char *s, va_list vl)
             case 'd':
             {
                 long num = longarg ? va_arg(vl, long) : va_arg(vl, int);
-                static const unsigned long decimal_power[10] = {1000000000UL, 100000000UL, 10000000UL, 1000000UL, 100000UL, 10000UL, 1000UL, 100UL, 10UL, 1UL};
                 unsigned long magnitude = (unsigned long)num;
                 if (num < 0)
                 {
                     put_char('-');
                     magnitude = 0UL - magnitude;
                 }
-                long digits = 0;
-                for (int i = 0; i < 10; i++)
-                {
-                    long p = (long)decimal_power[i];
-                    int digit = 0;
-                    while (magnitude >= (unsigned long)p)
-                    {
-                        magnitude -= (unsigned long)p;
-                        digit++;
-                    }
-                    if (digit != 0 || digits != 0 || i == 9)
-                    {
-                        out = '0' + digit;
-                        put_char(out);
-                        digits = 1;
-                    }
-                }
+                put_unsigned_decimal(magnitude);
+                longarg = 0;
+                format = 0;
+                break;
+            }
+            case 'u':
+            {
+                unsigned long num = longarg ? va_arg(vl, unsigned long) : va_arg(vl, unsigned int);
+                put_unsigned_decimal(num);
                 longarg = 0;
                 format = 0;
                 break;
