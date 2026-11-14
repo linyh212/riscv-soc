@@ -72,6 +72,7 @@ make clean
 
 ## 專案架構
 
+```text
 soc/
 ├── rtl/
 │   ├── core/       # 處理器 Pipeline、控制邏輯及 CSR／中斷處理
@@ -80,3 +81,4 @@ soc/
 ├── sim/            # Verilator C++ Testbench 與模擬記憶體載入程式
 ├── firmware/       # 裸機 C 韌體與 ISA 測試程式
 └── coremark/       # CoreMark Benchmark
+```
