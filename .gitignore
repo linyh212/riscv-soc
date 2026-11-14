@@ -1,0 +1,20 @@
+# macOS
+.DS_Store
+**/.DS_Store
+.__MACOSX/
+
+# Verilator & Simulation build artifacts
+obj_dir/
+build/
+*.vcd
+*.fst
+*.log
+
+# RISC-V Firmware & Benchmark build artifacts
+*.o
+*.d
+*.elf
+*.bin
+*.hex
+*.dump
+*.map
