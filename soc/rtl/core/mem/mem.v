@@ -1,37 +1,37 @@
 `include "defines.v"
 
 module mem (
-    input wire rst_i,
-    input wire[`RADDR_WIDTH-1:0] reg_waddr_i,
-    input wire reg_we_i,
-    input wire[`RDATA_WIDTH-1:0] reg_wdata_i,
-    input wire[`ADDR_WIDTH-1:0] mem_addr_i,
-    input wire mem_we_i,
-    input wire[`DATA_WIDTH-1:0] mem_data_i,
-    input wire[3:0] mem_op_i,
-    
-    input wire[`DATA_WIDTH-1:0] ram_data_i,
-
-    output reg[`RADDR_WIDTH-1:0] reg_waddr_o,
-    output reg reg_we_o,
-    output reg[`RDATA_WIDTH-1:0] reg_wdata_o,
-
-    output reg[`ADDR_WIDTH-1:0] ram_addr_o,
-    output reg ram_w_request_o,
-    output reg[`RDATA_WIDTH-1:0] ram_data_o,
-
-    output reg halt_o,
-
-    input  wire csr_we_i,
-    input  wire[`CSR_ADDR_WIDTH-1:0] csr_waddr_i,
-    input  wire[`DATA_WIDTH-1:0]     csr_wdata_i,
-    output reg csr_we_o,
+    input wire                      rst_i,
+    output reg                      halt_o,
+    // EX/MEM
+    input wire[`RADDR_WIDTH-1:0]    reg_waddr_i,
+    input wire                      reg_we_i,
+    input wire[`RDATA_WIDTH-1:0]    reg_wdata_i,
+    input wire[`ADDR_WIDTH-1:0]     mem_addr_i,
+    input wire                      mem_we_i,
+    input wire[`DATA_WIDTH-1:0]     mem_data_i,
+    input wire[3:0]                 mem_op_i,
+    // Data RAM Interface
+    input wire[`DATA_WIDTH-1:0]     ram_data_i,
+    output reg[`ADDR_WIDTH-1:0]     ram_addr_o,
+    output reg                      ram_w_request_o,
+    output reg[`RDATA_WIDTH-1:0]    ram_data_o,
+    // MEM/WB
+    output reg[`RADDR_WIDTH-1:0]    reg_waddr_o,
+    output reg                      reg_we_o,
+    output reg[`RDATA_WIDTH-1:0]    reg_wdata_o,
+    // CSR
+    input wire                      csr_we_i,
+    input wire[`CSR_ADDR_WIDTH-1:0] csr_waddr_i,
+    input wire[`DATA_WIDTH-1:0]     csr_wdata_i,
+    output reg                      csr_we_o,
     output reg[`CSR_ADDR_WIDTH-1:0] csr_waddr_o,
-    output reg[`DATA_WIDTH-1:0] csr_wdata_o,
-    input wire[`DATA_WIDTH-1:0] exception_i,
-    output reg[`DATA_WIDTH-1:0] exception_o,
-    input wire[`ADDR_WIDTH-1:0] exception_pc_i,
-    output reg[`ADDR_WIDTH-1:0] exception_pc_o
+    output reg[`DATA_WIDTH-1:0]     csr_wdata_o,
+    // Exception Handling Interface
+    input wire[`DATA_WIDTH-1:0]     exception_i,
+    input wire[`ADDR_WIDTH-1:0]     exception_pc_i,
+    output reg[`DATA_WIDTH-1:0]     exception_o,
+    output reg[`ADDR_WIDTH-1:0]     exception_pc_o
 );
     always @(*) begin
         reg_waddr_o = reg_waddr_i;

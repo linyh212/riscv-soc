@@ -1,18 +1,18 @@
 `include "defines.v"
 
 module id_type_r (
-    input wire[`DATA_WIDTH-1:0] inst_i,
-    input wire[`RDATA_WIDTH-1:0] reg1_rdata_i,
-    input wire[`RDATA_WIDTH-1:0] reg2_rdata_i,
+    input wire[`DATA_WIDTH-1:0]     inst_i,
+    input wire[`RDATA_WIDTH-1:0]    reg1_rdata_i,
+    input wire[`RDATA_WIDTH-1:0]    reg2_rdata_i,
 
-    output reg[`RADDR_WIDTH-1:0] reg1_raddr_o,
-    output reg[`RADDR_WIDTH-1:0] reg2_raddr_o,
-    output reg reg1_re_o,
-    output reg reg2_re_o,
-    output reg[`RDATA_WIDTH-1:0] op1_o,
-    output reg[`RDATA_WIDTH-1:0] op2_o,
-    output reg reg_we_o,
-    output reg[`RADDR_WIDTH-1:0] reg_waddr_o
+    output reg[`RADDR_WIDTH-1:0]    reg1_raddr_o,
+    output reg[`RADDR_WIDTH-1:0]    reg2_raddr_o,
+    output reg                      reg1_re_o,
+    output reg                      reg2_re_o,
+    output reg[`RDATA_WIDTH-1:0]    op1_o,
+    output reg[`RDATA_WIDTH-1:0]    op2_o,
+    output reg                      reg_we_o,
+    output reg[`RADDR_WIDTH-1:0]    reg_waddr_o
 );
     wire[6:0] opcode = inst_i[6:0];
     /* verilator lint_off UNUSEDSIGNAL */

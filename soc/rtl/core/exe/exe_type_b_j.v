@@ -1,7 +1,7 @@
 `include "defines.v"
 
 module exe_type_b_j (
-    input wire rst_i,
+    input wire                  rst_i,
     /* verilator lint_off UNUSEDSIGNAL */
     input wire[`DATA_WIDTH-1:0] inst_i,
     /* verilator lint_on UNUSEDSIGNAL */
@@ -9,7 +9,7 @@ module exe_type_b_j (
     input wire[`DATA_WIDTH-1:0] op1_i,
     input wire[`DATA_WIDTH-1:0] op2_i,
     output reg[`ADDR_WIDTH-1:0] jump_addr_o,
-    output reg jump_enable_o
+    output reg                  jump_enable_o
 );
     wire[6:0] opcode = inst_i[6:0];
     wire[2:0] funct3 = inst_i[14:12];

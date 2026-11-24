@@ -2,20 +2,17 @@
 
 /* verilator lint_off UNUSEDSIGNAL */
 module regfile (
-    input wire clk_i,
-    input wire rst_i,
-    
-    input wire we_i,
-    input wire[`RADDR_WIDTH-1:0] waddr_i,
-    input wire[`RDATA_WIDTH-1:0] wdata_i,
-
-    input wire re1_i,
-    input wire[`RADDR_WIDTH-1:0] raddr1_i,
-    output reg[`RDATA_WIDTH-1:0] rdata1_o,
-    
-    input wire re2_i,
-    input wire[`RADDR_WIDTH-1:0] raddr2_i,
-    output reg[`RDATA_WIDTH-1:0] rdata2_o
+    input wire                      clk_i,
+    input wire                      rst_i,
+    input wire                      we_i,
+    input wire[`RADDR_WIDTH-1:0]    waddr_i,
+    input wire[`RDATA_WIDTH-1:0]    wdata_i,
+    input wire                      re1_i,
+    input wire[`RADDR_WIDTH-1:0]    raddr1_i,
+    output reg[`RDATA_WIDTH-1:0]    rdata1_o,
+    input wire                      re2_i,
+    input wire[`RADDR_WIDTH-1:0]    raddr2_i,
+    output reg[`RDATA_WIDTH-1:0]    rdata2_o
 );
 /* verilator lint_on UNUSEDSIGNAL */
     reg[`RDATA_WIDTH-1:0] regs[0:`RNUM-1] /* verilator public */;

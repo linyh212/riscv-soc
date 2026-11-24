@@ -6,24 +6,24 @@ module bus #(
     parameter DataWidth = 32,
     parameter AddressWidth = 32
 ) (
-    input wire clk_i,
-    input wire rst_i,
-    
-    input wire host_req_i[NrHosts],
-    output reg host_gnt_o[NrHosts],
-    input wire[AddressWidth-1:0] host_addr_i[NrHosts],
-    input wire host_we_i[NrHosts],
-    input wire[DataWidth-1:0] host_wdata_i[NrHosts],
-    output reg[DataWidth-1:0] host_rdata_o[NrHosts],
-
-    output reg device_req_o[NrDevices],
-    output reg[AddressWidth-1:0] device_addr_o[NrDevices],
-    output reg device_we_o[NrDevices],
-    output reg[DataWidth-1:0] device_wdata_o[NrDevices],
-    input wire[DataWidth-1:0] device_rdata_i[NrDevices],
-
-    input wire[AddressWidth-1:0] cfg_device_addr_base[NrDevices],
-    input wire[AddressWidth-1:0] cfg_device_addr_mask[NrDevices]
+    input wire                      clk_i,
+    input wire                      rst_i,
+    // Host (Master) Interface
+    input wire                      host_req_i[NrHosts],
+    output reg                      host_gnt_o[NrHosts],
+    input wire[AddressWidth-1:0]    host_addr_i[NrHosts],
+    input wire                      host_we_i[NrHosts],
+    input wire[DataWidth-1:0]       host_wdata_i[NrHosts],
+    output reg[DataWidth-1:0]       host_rdata_o[NrHosts],
+    // Device (Slave) Interface
+    output reg                      device_req_o[NrDevices],
+    output reg[AddressWidth-1:0]    device_addr_o[NrDevices],
+    output reg                      device_we_o[NrDevices],
+    output reg[DataWidth-1:0]       device_wdata_o[NrDevices],
+    input wire[DataWidth-1:0]       device_rdata_i[NrDevices],
+    // Device Address Map Configuration
+    input wire[AddressWidth-1:0]    cfg_device_addr_base [NrDevices],
+    input wire[AddressWidth-1:0]    cfg_device_addr_mask [NrDevices]
 );
     localparam NumBitsHostSel = $clog2(NrHosts) > 0 ? $clog2(NrHosts) : 1;
     localparam NumBitsDeviceSel = $clog2(NrDevices) > 0 ? $clog2(NrDevices) : 1;

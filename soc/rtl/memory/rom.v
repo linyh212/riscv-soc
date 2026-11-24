@@ -1,9 +1,9 @@
 `include "defines.v"
 
 module rom (
-    input wire clk_i,
-    input wire ce_i,
-    input wire stall_i,
+    input wire                  clk_i,
+    input wire                  ce_i,
+    input wire                  stall_i,
     /* verilator lint_off UNUSEDSIGNAL */
     input wire[`ADDR_WIDTH-1:0] addr_i,
     /* verilator lint_on UNUSEDSIGNAL */

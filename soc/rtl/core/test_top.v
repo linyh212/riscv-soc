@@ -20,59 +20,49 @@ module test_top (
     `define DEV_CONSOLE     1
     `define DEV_TIMER       2
     `define DEV_CLINT       3
-
-    wire                    host_req[NrHosts];
+    
+    // --- System Bus & Memory Map ---
+    wire                        host_req[NrHosts];
     /* verilator lint_off UNUSEDSIGNAL */
-    wire                    host_gnt[NrHosts];
+    wire                        host_gnt[NrHosts];
     /* verilator lint_on UNUSEDSIGNAL */
-    wire[`ADDR_WIDTH-1:0]   host_addr[NrHosts];
-    wire                    host_we[NrHosts];
-    wire[`DATA_WIDTH-1:0]   host_wdata[NrHosts];
-    wire[`DATA_WIDTH-1:0]   host_rdata[NrHosts];
+    wire[`ADDR_WIDTH-1:0]       host_addr[NrHosts];
+    wire                        host_we[NrHosts];
+    wire[`DATA_WIDTH-1:0]       host_wdata[NrHosts];
+    wire[`DATA_WIDTH-1:0]       host_rdata[NrHosts];
+    wire                        device_req[NrDevices];
+    wire[`ADDR_WIDTH-1:0]       device_addr[NrDevices];
+    wire                        device_we[NrDevices];
+    wire[`DATA_WIDTH-1:0]       device_wdata[NrDevices];
+    wire[`DATA_WIDTH-1:0]       device_rdata[NrDevices];
+    wire[`ADDR_WIDTH-1:0]       cfg_device_addr_base[NrDevices];
+    wire[`ADDR_WIDTH-1:0]       cfg_device_addr_mask[NrDevices];
 
-    wire                    device_req[NrDevices];
-    wire[`ADDR_WIDTH-1:0]   device_addr[NrDevices];
-    wire                    device_we[NrDevices];
-    wire[`DATA_WIDTH-1:0]   device_wdata[NrDevices];
-    wire[`DATA_WIDTH-1:0]   device_rdata[NrDevices];
+    // --- Core RAM Interface ---
+    wire[`ADDR_WIDTH-1:0]       core_ram_addr_o;
+    wire[`DATA_WIDTH-1:0]       core_ram_data_o;
+    wire[`DATA_WIDTH-1:0]       core_ram_data_i;
+    wire                        core_ram_w_request_o;
+    wire                        core_ram_ce_o;
 
-    wire[`ADDR_WIDTH-1:0]   cfg_device_addr_base[NrDevices];
-    wire[`ADDR_WIDTH-1:0]   cfg_device_addr_mask[NrDevices];
+    // --- ISA Test & Halt ---
+    wire                        mem_halt_o;
+    wire                        console_halt_o;
 
-    assign cfg_device_addr_base[`DEV_RAM] = 32'h00000000;
-    assign cfg_device_addr_mask[`DEV_RAM] = ~32'h000FFFFF;
+    // --- IF Stage & IF/ID Pipeline ---
+    wire[`ADDR_WIDTH-1:0]       pc_wire;
+    wire                        ce_wire;
+    wire[`ADDR_WIDTH-1:0]       rom_addr_i;
+    reg[`ADDR_WIDTH-1:0]        if_inst_addr_o;
+    wire[`ADDR_WIDTH-1:0]       if_id_inst_addr_o;
 
-    assign cfg_device_addr_base[`DEV_CONSOLE] = 32'h00200000;
-    assign cfg_device_addr_mask[`DEV_CONSOLE] = 32'hFFFFFF00;
-
-    assign cfg_device_addr_base[`DEV_TIMER] = 32'h00300000;
-    assign cfg_device_addr_mask[`DEV_TIMER] = 32'hFFFFFF00;
-
-    assign cfg_device_addr_base[`DEV_CLINT] = 32'h02000000;
-    assign cfg_device_addr_mask[`DEV_CLINT] = 32'hFFFF0000;
-    
-    // ISA test
-    wire                    mem_halt_o;
-    wire                    console_halt_o;
-    assign halt_o = mem_halt_o | console_halt_o;
-
-    // IF Stage
-    wire[`ADDR_WIDTH-1:0]   pc_wire;
-    wire                    ce_wire;
-    reg[`ADDR_WIDTH-1:0]    if_inst_addr_o;
-    
-    // IF/ID to ID
-    wire[`ADDR_WIDTH-1:0]   if_id_inst_addr_o;
-    
-    // ID to Regfile
-    wire[`RADDR_WIDTH-1:0]  id_reg1_addr_o;
-    wire                    id_reg1_re_o;
-    wire[`RDATA_WIDTH-1:0]  reg1_data_o;
-    wire[`RADDR_WIDTH-1:0]  id_reg2_addr_o;
-    wire                    id_reg2_re_o;
-    wire[`RDATA_WIDTH-1:0]  reg2_data_o;
-
-    // ID to ID/EXE
+    // --- ID Stage, Regfile & ID/EXE Pipeline ---
+    wire[`RADDR_WIDTH-1:0]      id_reg1_addr_o;
+    wire                        id_reg1_re_o;
+    wire[`RDATA_WIDTH-1:0]      reg1_data_o;
+    wire[`RADDR_WIDTH-1:0]      id_reg2_addr_o;
+    wire                        id_reg2_re_o;
+    wire[`RDATA_WIDTH-1:0]      reg2_data_o;
     wire[`DATA_WIDTH-1:0]       id_inst_o;
     wire                        id_reg_we_o;
     wire[`RADDR_WIDTH-1:0]      id_reg_waddr_o;
@@ -81,7 +71,7 @@ module test_top (
     wire[`DATA_WIDTH-1:0]       id_exception_o;
     wire[`ADDR_WIDTH-1:0]       id_exception_pc_o;
 
-    // ID/EXE to EXE
+    // --- ID/EXE -> EXE Stage ---
     wire[`DATA_WIDTH-1:0]       id_exe_inst_o;
     wire[`ADDR_WIDTH-1:0]       id_exe_inst_addr_o;
     wire[`RDATA_WIDTH-1:0]      id_exe_op1_o;
@@ -93,11 +83,10 @@ module test_top (
     wire[`DATA_WIDTH-1:0]       id_exe_exception_o;
     wire[`ADDR_WIDTH-1:0]       id_exe_exception_pc_o;
 
-    // EXE <-> CSR (READ)
+    // --- EXE Stage & EXE/MEM Pipeline ---
     wire[`CSR_ADDR_WIDTH-1:0]   exe_csr_raddr_o;
     wire[`DATA_WIDTH-1:0]       csr_rdata_o;
 
-    // EXE to EXE/MEM
     wire[`RADDR_WIDTH-1:0]      exe_reg_waddr_o;
     wire                        exe_reg_we_o;
     wire[`RDATA_WIDTH-1:0]      exe_reg_wdata_o;
@@ -108,8 +97,12 @@ module test_top (
     wire                        exe_csr_we_o;
     wire[`CSR_ADDR_WIDTH-1:0]   exe_csr_waddr_o;
     wire[`DATA_WIDTH-1:0]       csr_csr_wdata_o;
+    wire[`DATA_WIDTH-1:0]       exe_exception_o;
+    wire[`ADDR_WIDTH-1:0]       exe_exception_pc_o;
+    wire[`ADDR_WIDTH-1:0]       exe_jump_addr_o;
+    wire                        exe_jump_enable_o;
 
-    // EXE/MEM to MEM
+    // --- EXE/MEM -> MEM Stage ---
     wire[`RADDR_WIDTH-1:0]      exe_mem_reg_waddr_o;
     wire                        exe_mem_reg_we_o;
     wire[`RDATA_WIDTH-1:0]      exe_mem_reg_wdata_o;
@@ -122,10 +115,8 @@ module test_top (
     wire[`DATA_WIDTH-1:0]       csr_mem_csr_wdata_o;
     wire[`DATA_WIDTH-1:0]       exe_mem_exception_o;
     wire[`ADDR_WIDTH-1:0]       exe_mem_exception_pc_o;
-    wire[`DATA_WIDTH-1:0]       exe_exception_o;
-    wire[`ADDR_WIDTH-1:0]       exe_exception_pc_o;
 
-    // MEM to MEM/WB
+    // --- MEM Stage & MEM/WB Pipeline ---
     wire[`RADDR_WIDTH-1:0]      mem_reg_waddr_o;
     wire                        mem_reg_we_o;
     wire[`RDATA_WIDTH-1:0]      mem_reg_wdata_o;
@@ -135,75 +126,90 @@ module test_top (
     wire[`DATA_WIDTH-1:0]       mem_exception_o;
     wire[`ADDR_WIDTH-1:0]       mem_exception_pc_o;
 
-    // MEM/WB to WB (Regfile Write-Back)
-    wire[`RADDR_WIDTH-1:0]  mem_wb_reg_waddr_o;
-    wire                    mem_wb_reg_we_o;
-    wire[`RDATA_WIDTH-1:0]  mem_wb_reg_wdata_o;
-
-    // MEM/WB to CSR (WRITE)
+    // --- MEM/WB -> WB (Regfile & CSR Write-Back) ---
+    wire[`RADDR_WIDTH-1:0]      mem_wb_reg_waddr_o;
+    wire                        mem_wb_reg_we_o;
+    wire[`RDATA_WIDTH-1:0]      mem_wb_reg_wdata_o;
     wire                        mem_wb_csr_we_o;
     wire[`CSR_ADDR_WIDTH-1:0]   mem_wb_csr_waddr_o;
     wire[`DATA_WIDTH-1:0]       mem_wb_csr_rdata_o;
-    
-    // Pipeline Control Signal
+
+    // --- Pipeline Control (Stall & Flush) ---
     /* verilator lint_off UNUSEDSIGNAL */
-    wire[5:0]               crtl_stall_o;
+    wire[5:0]                   crtl_stall_o;
     /* verilator lint_on UNUSEDSIGNAL */
-    wire                    id_stallreq_o;
-    wire                    pre_inst_is_load = (id_exe_inst_o[6:0] == `INST_TYPE_L);
+    wire                        id_stallreq_o;
+    wire                        exe_stallreq_o;
+    wire                        pre_inst_is_load;
+    wire                        ctrl_flush_jump_o;
+    wire                        ctrl_flush_int_o;
+    reg                         ctrl_flush_jump_delay;
+    wire                        ctrl_flush_fetch_o;
+    wire[`ADDR_WIDTH-1:0]       ctrl_new_pc_o;
 
-    wire[`ADDR_WIDTH-1:0]   core_ram_addr_o;
-    wire[`DATA_WIDTH-1:0]   core_ram_data_o;
-    wire[`DATA_WIDTH-1:0]   core_ram_data_i;
-    wire                    core_ram_w_request_o;
-    wire                    core_ram_ce_o = (core_ram_w_request_o || (exe_mem_mem_op_o != 4'b0));
+    // --- CSR, Interrupt & Timer ---
+    wire                        timer_irq;
+    wire                        clint_timer_irq;
+    wire                        clint_software_irq;
+    wire                        csr_mstatus_ie_o;
+    wire                        csr_mie_external_o;
+    wire                        csr_mie_timer_o;
+    wire                        csr_mie_software_o;
+    wire                        csr_mip_external_o;
+    wire                        csr_mip_timer_o;
+    wire                        csr_mip_software_o;
+    wire[`DATA_WIDTH-1:0]       csr_mtvec_o;
+    wire[`DATA_WIDTH-1:0]       csr_mepc_o;
+    wire                        interrupt_type_o;
+    wire                        interrupt_cause_we_o;
+    wire[3:0]                   interrupt_trap_cause_o;
+    wire                        interrupt_epc_we_o;
+    wire[`DATA_WIDTH-1:0]       interrupt_epc_o;
+    wire                        interrupt_mstatus_ie_clear_o;
+    wire                        interrupt_mstatus_ie_set_o;
+    wire                        interrupt_flush_o;
+    wire[`DATA_WIDTH-1:0]       interrupt_new_pc_o;
 
-    wire                    ctrl_flush_jump_o;
-    wire                    ctrl_flush_int_o;
-    reg                     ctrl_flush_jump_delay;
-    wire                    ctrl_flush_fetch_o = ctrl_flush_jump_o | ctrl_flush_int_o | ctrl_flush_jump_delay;
-    wire[`ADDR_WIDTH-1:0]   exe_jump_addr_o;
-    wire                    exe_jump_enable_o;
-    wire                    exe_stallreq_o;
-    wire[`ADDR_WIDTH-1:0]   rom_addr_i = (ctrl_flush_jump_o | ctrl_flush_int_o) ? ctrl_new_pc_o : pc_wire;
-
-    wire                    timer_irq;
-    wire                    clint_timer_irq;
-    wire                    clint_software_irq;
-    wire                    csr_mstatus_ie_o;
-    wire                    csr_mie_external_o;
-    wire                    csr_mie_timer_o;
-    wire                    csr_mie_software_o;
-    wire                    csr_mip_external_o;
-    wire                    csr_mip_timer_o;
-    wire                    csr_mip_software_o;
-    wire[`DATA_WIDTH-1:0]   csr_mtvec_o;
-    wire[`DATA_WIDTH-1:0]   csr_mepc_o;
-    wire                    interrupt_type_o;
-    wire                    interrupt_cause_we_o;
-    wire[3:0]               interrupt_trap_cause_o;
-    wire                    interrupt_epc_we_o;
-    wire[`DATA_WIDTH-1:0]   interrupt_epc_o;
-    wire                    interrupt_mstatus_ie_clear_o;
-    wire                    interrupt_mstatus_ie_set_o;
-    wire                    interrupt_flush_o;
-    wire[`DATA_WIDTH-1:0]   interrupt_new_pc_o;
-    wire[`ADDR_WIDTH-1:0]   ctrl_new_pc_o;
-
+    // --- Top-Level & System Status Outputs ---
     assign pc_o = pc_wire;
+    assign halt_o = mem_halt_o | console_halt_o;
+
+    // --- Pipeline Hazard & Fetch Control ---
+    assign pre_inst_is_load = (id_exe_inst_o[6:0] == `INST_TYPE_L);
+    assign core_ram_ce_o = (core_ram_w_request_o || (exe_mem_mem_op_o != 4'b0));
+    assign ctrl_flush_fetch_o = ctrl_flush_jump_o | ctrl_flush_int_o | ctrl_flush_jump_delay;
+    assign rom_addr_i = (ctrl_flush_jump_o | ctrl_flush_int_o) ? ctrl_new_pc_o : pc_wire;
+
+    // --- System Bus Host & Device Connections ---
+    assign host_req[`HOST_CORE_PORT] = core_ram_ce_o;
+    assign host_addr[`HOST_CORE_PORT] = core_ram_addr_o;
+    assign host_we[`HOST_CORE_PORT] = core_ram_w_request_o;
+    assign host_wdata[`HOST_CORE_PORT] = core_ram_data_o;
+    assign core_ram_data_i = host_rdata[`HOST_CORE_PORT];
+    assign device_rdata[`DEV_CONSOLE]  = 32'h0; // Console is write-only
+
+    // --- Memory-Mapped I/O Address Configuration ---
+    assign cfg_device_addr_base[`DEV_RAM] = 32'h00000000;
+    assign cfg_device_addr_mask[`DEV_RAM] = ~32'h000FFFFF;
+    assign cfg_device_addr_base[`DEV_CONSOLE] = 32'h00200000;
+    assign cfg_device_addr_mask[`DEV_CONSOLE] = 32'hFFFFFF00;
+    assign cfg_device_addr_base[`DEV_TIMER] = 32'h00300000;
+    assign cfg_device_addr_mask[`DEV_TIMER] = 32'hFFFFFF00;
+    assign cfg_device_addr_base[`DEV_CLINT] = 32'h02000000;
+    assign cfg_device_addr_mask[`DEV_CLINT] = 32'hFFFF0000;
 
     always @(posedge clk_i) begin
-        if(rst_i == 1'b1) begin
+        if (rst_i == 1'b1) begin
             ctrl_flush_jump_delay <= 1'b0;
         end else begin
             ctrl_flush_jump_delay <= ctrl_flush_jump_o;
         end
     end
-    
+
     always @(posedge clk_i) begin
-        if(rst_i == 1'b1) begin
+        if (rst_i == 1'b1) begin
             if_inst_addr_o <= `ZERO;
-        end else if(crtl_stall_o[0] == `NOSTOP) begin
+        end else if (crtl_stall_o[0] == `NOSTOP) begin
             if_inst_addr_o <= rom_addr_i;
         end
     end
@@ -234,8 +240,7 @@ module test_top (
         .inst_i(if_id_inst_o),
         .reg1_rdata_i(reg1_data_o),
         .reg2_rdata_i(reg2_data_o),
-
-        // Data Forwarding
+        // Data Forwarding Inputs
         .exe_reg_waddr_i(exe_reg_waddr_o),
         .exe_reg_wdata_i(exe_reg_wdata_o),
         .exe_reg_we_i(exe_reg_we_o),
@@ -244,7 +249,7 @@ module test_top (
         .mem_reg_we_i(mem_reg_we_o),
         .exe_rd_i(id_exe_reg_waddr_o),
         .pre_inst_is_load_i(pre_inst_is_load),
-
+        // Decoder Outputs
         .reg1_raddr_o(id_reg1_addr_o),
         .reg2_raddr_o(id_reg2_addr_o),
         .reg1_re_o(id_reg1_re_o),
@@ -405,6 +410,19 @@ module test_top (
         .csr_waddr_o(mem_wb_csr_waddr_o),
         .csr_wdata_o(mem_wb_csr_rdata_o)
     );
+    pipe_crtl pipe_crtl0 (
+        .rst_i(rst_i),
+        .stallreq_from_id_i(id_stallreq_o),
+        .stallreq_from_exe_i(exe_stallreq_o),
+        .jump_en_i(exe_jump_enable_o),
+        .jump_addr_i(exe_jump_addr_o),
+        .int_en_i(interrupt_flush_o),
+        .isr_pc_i(interrupt_new_pc_o),
+        .stall_o(crtl_stall_o),
+        .flush_jump_o(ctrl_flush_jump_o),
+        .flush_int_o(ctrl_flush_int_o),
+        .new_pc_o(ctrl_new_pc_o)
+    );
     interrupt_ctrl interrupt_ctrl0 (
         .clk_i(clk_i),
         .rst_i(rst_i),
@@ -429,19 +447,6 @@ module test_top (
         .mstatus_ie_set_o(interrupt_mstatus_ie_set_o),
         .flush_o(interrupt_flush_o),
         .new_pc_o(interrupt_new_pc_o)
-    );
-    pipe_crtl pipe_crtl0 (
-        .rst_i(rst_i),
-        .stallreq_from_id_i(id_stallreq_o),
-        .stallreq_from_exe_i(exe_stallreq_o),
-        .jump_en_i(exe_jump_enable_o),
-        .jump_addr_i(exe_jump_addr_o),
-        .int_en_i(interrupt_flush_o),
-        .isr_pc_i(interrupt_new_pc_o),
-        .stall_o(crtl_stall_o),
-        .flush_jump_o(ctrl_flush_jump_o),
-        .flush_int_o(ctrl_flush_int_o),
-        .new_pc_o(ctrl_new_pc_o)
     );
     csr csr0 (
         .clk_i(clk_i),
@@ -472,17 +477,12 @@ module test_top (
         .mstatus_ie_clear_i(interrupt_mstatus_ie_clear_o),
         .mstatus_ie_set_i(interrupt_mstatus_ie_set_o)
     );
-    assign host_req[`HOST_CORE_PORT] = core_ram_ce_o;
-    assign host_addr[`HOST_CORE_PORT] = core_ram_addr_o;
-    assign host_we[`HOST_CORE_PORT] = core_ram_w_request_o;
-    assign host_wdata[`HOST_CORE_PORT] = core_ram_data_o;
-    assign core_ram_data_i = host_rdata[`HOST_CORE_PORT];
     bus #(
         .NrDevices(NrDevices),
         .NrHosts(NrHosts),
         .DataWidth(`DATA_WIDTH),
         .AddressWidth(`ADDR_WIDTH)
-    ) u_bus(
+    ) u_bus (
         .clk_i(clk_i),
         .rst_i(rst_i),
         .host_req_i(host_req),
@@ -502,7 +502,7 @@ module test_top (
     dpram #(
         .RAM_SIZE(MemSize),
         .RAM_ADDR_WIDTH(MemAddrWidth)
-    ) data_ram0(
+    ) data_ram0 (
         .clk_i(clk_i),
         .rst_i(rst_i),
         .ce_i(device_req[`DEV_RAM]),
@@ -515,11 +515,9 @@ module test_top (
         .pc_i(rom_addr_i),
         .inst_o(if_inst_o)
     );
-
-    assign device_rdata[`DEV_CONSOLE] = 32'h0;
     console #(
         .LogName("./log/console.log")
-    ) console0(
+    ) console0 (
         .clk_i(clk_i),
         .rst_i(rst_i),
         .req_i(device_req[`DEV_CONSOLE]),
@@ -538,7 +536,6 @@ module test_top (
         .rdata_o(device_rdata[`DEV_TIMER]),
         .irq_o(timer_irq)
     );
-
     clint clint0 (
         .clk_i(clk_i),
         .rst_i(rst_i),

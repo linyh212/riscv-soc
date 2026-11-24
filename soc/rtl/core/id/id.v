@@ -2,40 +2,40 @@
 
 /* verilator lint_off UNUSEDSIGNAL */
 module id (
-    input wire rst_i,
-    input wire[`ADDR_WIDTH-1:0] inst_addr_i,
-    input wire[`DATA_WIDTH-1:0] inst_i,
+    input wire                      rst_i,
+    input wire[`ADDR_WIDTH-1:0]     inst_addr_i,
+    input wire[`DATA_WIDTH-1:0]     inst_i,
     
-    input wire[`RDATA_WIDTH-1:0] reg1_rdata_i,
-    input wire[`RDATA_WIDTH-1:0] reg2_rdata_i,
+    input wire[`RDATA_WIDTH-1:0]    reg1_rdata_i,
+    input wire[`RDATA_WIDTH-1:0]    reg2_rdata_i,
 
-    input wire[`RADDR_WIDTH-1:0] exe_reg_waddr_i,
-    input wire[`RDATA_WIDTH-1:0] exe_reg_wdata_i,
-    input wire exe_reg_we_i,
-    input wire[`RADDR_WIDTH-1:0] mem_reg_waddr_i,
-    input wire[`RDATA_WIDTH-1:0] mem_reg_wdata_i,
-    input wire mem_reg_we_i,
+    input wire[`RADDR_WIDTH-1:0]    exe_reg_waddr_i,
+    input wire[`RDATA_WIDTH-1:0]    exe_reg_wdata_i,
+    input wire                      exe_reg_we_i,
+    input wire[`RADDR_WIDTH-1:0]    mem_reg_waddr_i,
+    input wire[`RDATA_WIDTH-1:0]    mem_reg_wdata_i,
+    input wire                      mem_reg_we_i,
 
-    input wire[`RADDR_WIDTH-1:0] exe_rd_i,
-    input wire pre_inst_is_load_i,
+    input wire[`RADDR_WIDTH-1:0]    exe_rd_i,
+    input wire                      pre_inst_is_load_i,
 
-    output reg[`RADDR_WIDTH-1:0] reg1_raddr_o,
-    output reg reg1_re_o,
-    output reg[`RADDR_WIDTH-1:0] reg2_raddr_o,
-    output reg reg2_re_o,
+    output reg[`RADDR_WIDTH-1:0]    reg1_raddr_o,
+    output reg                      reg1_re_o,
+    output reg[`RADDR_WIDTH-1:0]    reg2_raddr_o,
+    output reg                      reg2_re_o,
 
-    output reg[`DATA_WIDTH-1:0] inst_o,
-    output reg[`RDATA_WIDTH-1:0] op1_o,
-    output reg[`RDATA_WIDTH-1:0] op2_o,
-    output reg reg_we_o,
-    output reg[`RADDR_WIDTH-1:0] reg_waddr_o,
+    output reg[`DATA_WIDTH-1:0]     inst_o,
+    output reg[`RDATA_WIDTH-1:0]    op1_o,
+    output reg[`RDATA_WIDTH-1:0]    op2_o,
+    output reg                      reg_we_o,
+    output reg[`RADDR_WIDTH-1:0]    reg_waddr_o,
 
-    output reg stallreq_o,
+    output reg                      stallreq_o,
 
-    output reg csr_we_o,
+    output reg                      csr_we_o,
     output reg[`CSR_ADDR_WIDTH-1:0] csr_addr_o,
-    output wire[`DATA_WIDTH-1:0] exception_o,
-    output reg[`ADDR_WIDTH-1:0] exception_pc_o
+    output wire[`DATA_WIDTH-1:0]    exception_o,
+    output reg[`ADDR_WIDTH-1:0]     exception_pc_o
 );
 /* verilator lint_on UNUSEDSIGNAL */
     wire[6:0] opcode = inst_i[6:0];
@@ -52,38 +52,38 @@ module id (
         else stallreq_o = `NOSTOP;
     end
 
-    wire[`RADDR_WIDTH-1:0] i_reg1_raddr_o;
-    wire[`RADDR_WIDTH-1:0] i_reg2_raddr_o;
-    wire i_reg1_re_o;
-    wire i_reg2_re_o;
-    wire[`RDATA_WIDTH-1:0] i_op1_o;
-    wire[`RDATA_WIDTH-1:0] i_op2_o;
-    wire[`RADDR_WIDTH-1:0] i_reg_waddr_o;
-    wire i_reg_we_o;
+    wire[`RADDR_WIDTH-1:0]  i_reg1_raddr_o;
+    wire[`RADDR_WIDTH-1:0]  i_reg2_raddr_o;
+    wire                    i_reg1_re_o;
+    wire                    i_reg2_re_o;
+    wire[`RDATA_WIDTH-1:0]  i_op1_o;
+    wire[`RDATA_WIDTH-1:0]  i_op2_o;
+    wire[`RADDR_WIDTH-1:0]  i_reg_waddr_o;
+    wire                    i_reg_we_o;
 
-    wire[`RADDR_WIDTH-1:0] r_reg1_raddr_o;
-    wire[`RADDR_WIDTH-1:0] r_reg2_raddr_o;
-    wire r_reg1_re_o;
-    wire r_reg2_re_o;
-    wire[`RDATA_WIDTH-1:0] r_op1_o;
-    wire[`RDATA_WIDTH-1:0] r_op2_o;
-    wire[`RADDR_WIDTH-1:0] r_reg_waddr_o;
-    wire r_reg_we_o;
+    wire[`RADDR_WIDTH-1:0]  r_reg1_raddr_o;
+    wire[`RADDR_WIDTH-1:0]  r_reg2_raddr_o;
+    wire                    r_reg1_re_o;
+    wire                    r_reg2_re_o;
+    wire[`RDATA_WIDTH-1:0]  r_op1_o;
+    wire[`RDATA_WIDTH-1:0]  r_op2_o;
+    wire[`RADDR_WIDTH-1:0]  r_reg_waddr_o;
+    wire                    r_reg_we_o;
 
-    wire[`RADDR_WIDTH-1:0] type_b_j_reg1_raddr_o;
-    wire type_b_j_reg1_re_o;
-    wire[`RADDR_WIDTH-1:0] type_b_j_reg2_raddr_o;
-    wire type_b_j_reg2_re_o;
-    wire[`RDATA_WIDTH-1:0] type_b_j_op1_o;
-    wire[`RDATA_WIDTH-1:0] type_b_j_op2_o;
-    wire[`RADDR_WIDTH-1:0] type_b_j_reg_waddr_o;
-    wire type_b_j_reg_we_o;
+    wire[`RADDR_WIDTH-1:0]  type_b_j_reg1_raddr_o;
+    wire                    type_b_j_reg1_re_o;
+    wire[`RADDR_WIDTH-1:0]  type_b_j_reg2_raddr_o;
+    wire                    type_b_j_reg2_re_o;
+    wire[`RDATA_WIDTH-1:0]  type_b_j_op1_o;
+    wire[`RDATA_WIDTH-1:0]  type_b_j_op2_o;
+    wire[`RADDR_WIDTH-1:0]  type_b_j_reg_waddr_o;
+    wire                    type_b_j_reg_we_o;
 
-    reg[`RDATA_WIDTH-1:0] op1_o_final;
-    reg[`RDATA_WIDTH-1:0] op2_o_final;
+    reg[`RDATA_WIDTH-1:0]   op1_o_final;
+    reg[`RDATA_WIDTH-1:0]   op2_o_final;
 
-    reg except_mret;
-    reg except_ecall;
+    reg                     except_mret;
+    reg                     except_ecall;
     assign exception_o = {30'b0, except_ecall, except_mret};
 
     id_type_i INST_TYPE_I(

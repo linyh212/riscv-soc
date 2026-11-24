@@ -7,6 +7,7 @@
 #include "Vtest_top_dpram__R100000_RB14.h"
 #include "Vtest_top_regfile.h"
 
+// 將指定長度的位元組資料寫入 ROM 的起始位址
 void sim_mem_write(Vtest_top_dpram__R100000_RB14* rom, uint32_t addr, size_t length, const void* bytes) {
     const uint8_t* p = reinterpret_cast<const uint8_t*>(bytes);
     for (size_t i = 0; i < length; i++) {
@@ -14,12 +15,14 @@ void sim_mem_write(Vtest_top_dpram__R100000_RB14* rom, uint32_t addr, size_t len
     }
 }
 
+// 將二進位資料從位址 0 開始載入至 RAM
 void sim_ram_load_bin(Vtest_top_dpram__R100000_RB14* ram, const uint8_t* bytes, size_t length) {
     for (size_t i = 0; i < length; i++) {
         ram->writeByte(i, bytes[i]);
     }
 }
 
+// 從檔案讀取二進位韌體並同步載入至 ROM 與 RAM
 void sim_mem_load_bin(Vtest_top_dpram__R100000_RB14* rom, Vtest_top_dpram__R100000_RB14* ram, std::string fn) {
     std::ifstream bpfs(fn, std::ios::binary | std::ios::ate);
     if (!bpfs.is_open()) {
@@ -31,14 +34,13 @@ void sim_mem_load_bin(Vtest_top_dpram__R100000_RB14* rom, Vtest_top_dpram__R1000
     bpfs.seekg(0, std::ios::beg);
     bpfs.read(buf, f_length);
     bpfs.close();
-
     std::cout << "Successfully loaded firmware (" << fn << "), size: " << f_length << " bytes." << std::endl;
-
     sim_mem_write(rom, 0, static_cast<size_t>(f_length), buf);
     sim_ram_load_bin(ram, reinterpret_cast<const uint8_t*>(buf), static_cast<size_t>(f_length));
     delete[] buf;
 }
 
+// 讀取指定位址的暫存器數值
 uint32_t sim_regs_read(Vtest_top_regfile* regs, uint32_t addr) {
     uint32_t v;
     regs->readRegister(addr, v);

@@ -1,32 +1,32 @@
 `include "defines.v"
 
 module id_exe (
-    input wire clk_i,
-    input wire rst_i,
-    input wire[3:2] stall_i,
-    input wire flush_jump_i,
-    input wire[`DATA_WIDTH-1:0] inst_i,
-    input wire[`ADDR_WIDTH-1:0] inst_addr_i,
-    input wire[`RDATA_WIDTH-1:0] op1_i,
-    input wire[`RDATA_WIDTH-1:0] op2_i,
-    input wire reg_we_i,
-    input wire[`RADDR_WIDTH-1:0] reg_waddr_i,
+    input wire                      clk_i,
+    input wire                      rst_i,
+    input wire[3:2]                 stall_i,
+    input wire                      flush_jump_i,
+    input wire[`DATA_WIDTH-1:0]     inst_i,
+    input wire[`ADDR_WIDTH-1:0]     inst_addr_i,
+    input wire[`RDATA_WIDTH-1:0]    op1_i,
+    input wire[`RDATA_WIDTH-1:0]    op2_i,
+    input wire                      reg_we_i,
+    input wire[`RADDR_WIDTH-1:0]    reg_waddr_i,
 
-    output reg[`DATA_WIDTH-1:0] inst_o,
-    output reg[`ADDR_WIDTH-1:0] inst_addr_o,
-    output reg[`RDATA_WIDTH-1:0] op1_o,
-    output reg[`RDATA_WIDTH-1:0] op2_o,
-    output reg reg_we_o,
-    output reg[`RADDR_WIDTH-1:0] reg_waddr_o,
+    output reg[`DATA_WIDTH-1:0]     inst_o,
+    output reg[`ADDR_WIDTH-1:0]     inst_addr_o,
+    output reg[`RDATA_WIDTH-1:0]    op1_o,
+    output reg[`RDATA_WIDTH-1:0]    op2_o,
+    output reg                      reg_we_o,
+    output reg[`RADDR_WIDTH-1:0]    reg_waddr_o,
 
-    input wire csr_we_i,
+    input wire                      csr_we_i,
     input wire[`CSR_ADDR_WIDTH-1:0] csr_addr_i,
-    output reg csr_we_o,
+    output reg                      csr_we_o,
     output reg[`CSR_ADDR_WIDTH-1:0] csr_addr_o,
-    input wire[`DATA_WIDTH-1:0] exception_i,
-    output reg[`DATA_WIDTH-1:0] exception_o,
-    input wire[`ADDR_WIDTH-1:0] exception_pc_i,
-    output reg[`ADDR_WIDTH-1:0] exception_pc_o
+    input wire[`DATA_WIDTH-1:0]     exception_i,
+    output reg[`DATA_WIDTH-1:0]     exception_o,
+    input wire[`ADDR_WIDTH-1:0]     exception_pc_i,
+    output reg[`ADDR_WIDTH-1:0]     exception_pc_o
 );
     always @(posedge clk_i) begin
         if(rst_i == 1'b1 || flush_jump_i == 1'b1) begin

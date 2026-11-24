@@ -1,10 +1,10 @@
 `include "defines.v"
 
 module if_id (
-    input wire clk_i,
-    input wire rst_i,
-    input wire[2:1] stall_i,
-    input wire flush_jump_i,
+    input wire                  clk_i,
+    input wire                  rst_i,
+    input wire[2:1]             stall_i,
+    input wire                  flush_jump_i,
     input wire[`ADDR_WIDTH-1:0] inst_addr_i,
     input wire[`DATA_WIDTH-1:0] inst_i,
     output reg[`ADDR_WIDTH-1:0] inst_addr_o,

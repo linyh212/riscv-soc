@@ -1,9 +1,9 @@
 `include "defines.v"
 
 module ram (
-    input wire clk_i,
-    input wire rst_i,
-    input wire we_i,
+    input wire                  clk_i,
+    input wire                  rst_i,
+    input wire                  we_i,
     /* verilator lint_off UNUSEDSIGNAL */
     input wire[`ADDR_WIDTH-1:0] addr_i,
     /* verilator lint_on UNUSEDSIGNAL */

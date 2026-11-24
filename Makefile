@@ -1,19 +1,28 @@
+# --------------------------------------------------
+# Basic and Path Configuration
+# --------------------------------------------------
 TOP        = test_top
 GTKWAVE    = gtkwave
 
 BUILD_DIR  = build
 TARGET_BIN = $(BUILD_DIR)/V$(TOP)
 
+# --------------------------------------------------
+# Firmware and Test Program Binary Paths
+# --------------------------------------------------
 ISA_TEST_BIN = soc/firmware/isa_tests/test.bin
 C_FW_DIR     = soc/firmware
 C_FW_BIN     = $(C_FW_DIR)/firmware.bin
 COREMARK_DIR = soc/coremark
 COREMARK_BIN = $(COREMARK_DIR)/core_main.bin
 
+# --------------------------------------------------
+# Verilog Hardware Source and Include Paths
+# --------------------------------------------------
 V_SRC    = soc/rtl/core/test_top.v
 V_SRC   += $(wildcard soc/rtl/device/*.v)
 V_SRC   += soc/rtl/core/pipe_crtl.v
-V_SRC   += soc/rtl/core/interrupt_ctrl.v
+V_SRC   += $(wildcard soc/rtl/core/interrupt_ctrl.v)
 V_SRC   += $(wildcard soc/rtl/core/if/*.v)
 V_SRC   += $(wildcard soc/rtl/core/id/*.v)
 V_SRC   += $(wildcard soc/rtl/core/exe/*.v)
@@ -21,17 +30,22 @@ V_SRC   += $(wildcard soc/rtl/core/mem/*.v)
 V_SRC   += $(wildcard soc/rtl/core/wb/*.v)
 V_SRC   += $(wildcard soc/rtl/memory/*.v)
 
-# C++ Testbench 原始碼
-SIM_SRC  = $(wildcard soc/sim/*.cpp)
-
 INC      = -Isoc/rtl/include
 
+# --------------------------------------------------
+# C++ Testbench Source Files
+# --------------------------------------------------
+SIM_SRC  = $(wildcard soc/sim/*.cpp)
+
+# --------------------------------------------------
+# Phony Targets and Default Rules
+# --------------------------------------------------
 .PHONY: all run run_c coremark test wave clean build_c_fw build_cm
 
 all: run
 
 # --------------------------------------------------
-# 韌體編譯規則
+# Firmware Compilation Rules
 # --------------------------------------------------
 $(ISA_TEST_BIN):
 	$(MAKE) -C soc/firmware/isa_tests
@@ -43,7 +57,7 @@ build_cm:
 	$(MAKE) -C $(COREMARK_DIR)
 
 # --------------------------------------------------
-# Verilator 硬體轉譯與編譯
+# Verilator Hardware Translation and Compilation
 # --------------------------------------------------
 $(TARGET_BIN): $(V_SRC) $(SIM_SRC)
 	@mkdir -p $(BUILD_DIR)
@@ -55,7 +69,7 @@ $(TARGET_BIN): $(V_SRC) $(SIM_SRC)
 		$(V_SRC) $(SIM_SRC)
 
 # --------------------------------------------------
-# 執行與測試指令
+# Simulation Execution and Test Commands
 # --------------------------------------------------
 run: $(ISA_TEST_BIN) $(TARGET_BIN)
 	./$(TARGET_BIN) $(ISA_TEST_BIN)
@@ -72,6 +86,9 @@ test: $(TARGET_BIN)
 	$(MAKE) -C soc/firmware/isa_tests
 	python3 soc/test_all_isa.py
 
+# --------------------------------------------------
+# Waveform Viewing and Environment Cleanup
+# --------------------------------------------------
 wave: run
 	$(GTKWAVE) wave.vcd &
 

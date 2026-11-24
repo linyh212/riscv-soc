@@ -1,14 +1,14 @@
 `include "defines.v"
 
 module pc_reg (
-    input wire clk_i,
-    input wire rst_i,
-    input wire stall_i,
-    input wire flush_jump_i,
-    input wire flush_int_i,
+    input wire                  clk_i,
+    input wire                  rst_i,
+    input wire                  stall_i,
+    input wire                  flush_jump_i,
+    input wire                  flush_int_i,
     input wire[`ADDR_WIDTH-1:0] new_pc_i,
     output reg[`ADDR_WIDTH-1:0] pc_o,
-    output reg ce_o
+    output reg                  ce_o
 );
     always @(posedge clk_i) begin
         if(rst_i) begin

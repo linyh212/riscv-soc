@@ -1,16 +1,16 @@
 `include "defines.v"
 
 module exe_type_m (
-    input wire clk_i,
-    input wire rst_i,
-    input wire[`DATA_WIDTH-1:0] op1_i,
-    input wire[`DATA_WIDTH-1:0] op2_i,
+    input wire                      clk_i,
+    input wire                      rst_i,
+    input wire[`DATA_WIDTH-1:0]     op1_i,
+    input wire[`DATA_WIDTH-1:0]     op2_i,
     /* verilator lint_off UNUSEDSIGNAL */
-    input wire[`RDATA_WIDTH-1:0] inst_i,
+    input wire[`RDATA_WIDTH-1:0]    inst_i,
     /* verilator lint_on UNUSEDSIGNAL */
-    output wire stall_o,
-    output reg[`RDATA_WIDTH-1:0] reg_wdata_o,
-    output reg reg_we_o
+    output wire                     stall_o,
+    output reg[`RDATA_WIDTH-1:0]    reg_wdata_o,
+    output reg                      reg_we_o
 );
     wire[6:0] opcode = inst_i[6:0];
     wire[2:0] funct3 = inst_i[14:12];

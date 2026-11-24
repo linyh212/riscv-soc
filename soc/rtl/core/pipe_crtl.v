@@ -1,16 +1,16 @@
 `include "defines.v"
 
 module pipe_crtl (
-    input wire rst_i,
-    input wire stallreq_from_id_i,
-    input wire stallreq_from_exe_i,
-    input wire jump_en_i,
+    input wire                  rst_i,
+    input wire                  stallreq_from_id_i,
+    input wire                  stallreq_from_exe_i,
+    input wire                  jump_en_i,
     input wire[`ADDR_WIDTH-1:0] jump_addr_i,
-    input wire int_en_i,
+    input wire                  int_en_i,
     input wire[`DATA_WIDTH-1:0] isr_pc_i,
-    output reg[5:0] stall_o,
-    output reg flush_jump_o,
-    output reg flush_int_o,
+    output reg[5:0]             stall_o,
+    output reg                  flush_jump_o,
+    output reg                  flush_int_o,
     output reg[`ADDR_WIDTH-1:0] new_pc_o
 );
     always @(*) begin
@@ -27,7 +27,6 @@ module pipe_crtl (
                 flush_jump_o = 1'b1;
                 new_pc_o = jump_addr_i;
             end
-
             if(stallreq_from_exe_i == `STOP) begin
             stall_o = 6'b001111;
             end else if(stallreq_from_id_i == `STOP) begin

@@ -1,16 +1,16 @@
 `include "defines.v"
 
 module timer (
-    input wire clk_i,
-    input wire rst_i,
-    input wire req_i,
-    input wire we_i,
+    input wire          clk_i,
+    input wire          rst_i,
+    input wire          req_i,
+    input wire          we_i,
     /* verilator lint_off UNUSEDSIGNAL */
-    input wire[31:0] addr_i,
+    input wire[31:0]    addr_i,
     /* verilator lint_on UNUSEDSIGNAL */
-    input wire[31:0] wdata_i,
-    output reg[31:0] rdata_o,
-    output reg irq_o
+    input wire[31:0]    wdata_i,
+    output reg[31:0]    rdata_o,
+    output reg          irq_o
 );
     localparam reg[7:0] TIMER_CTRL_ADDR = 8'h00;
     localparam reg[7:0] TIMER_PRESCALER_ADDR = 8'h04;

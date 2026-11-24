@@ -4,19 +4,19 @@ module dpram #(
     parameter RAM_SIZE = 65536,
     parameter RAM_ADDR_WIDTH = 16
 )(
-    input wire clk_i,
-    input wire rst_i,
-    input wire ce_i,
-    
-    input wire we_i,
-    input wire[3:0] mem_op_i,
+    input wire                  clk_i,
+    input wire                  rst_i,
+    input wire                  ce_i,
+
+    input wire                  we_i,
+    input wire[3:0]             mem_op_i,
     /* verilator lint_off UNUSEDSIGNAL */
     input wire[`ADDR_WIDTH-1:0] addr_i,
     /* verilator lint_on UNUSEDSIGNAL */
     input wire[`DATA_WIDTH-1:0] data_i,
     output reg[`DATA_WIDTH-1:0] data_o,
 
-    input wire inst_ce_i,
+    input wire                  inst_ce_i,
     /* verilator lint_off UNUSEDSIGNAL */
     input wire[`ADDR_WIDTH-1:0] pc_i,
     /* verilator lint_on UNUSEDSIGNAL */

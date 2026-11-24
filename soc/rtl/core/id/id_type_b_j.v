@@ -7,12 +7,12 @@ module id_type_b_j (
     input wire[`ADDR_WIDTH-1:0] inst_addr_i,
     input wire[`DATA_WIDTH-1:0] reg1_rdata_i,
     input wire[`DATA_WIDTH-1:0] reg2_rdata_i,
-    output reg[4:0] reg1_raddr_o,
-    output reg reg1_re_o,
-    output reg[4:0] reg2_raddr_o,
-    output reg reg2_re_o,
-    output reg reg_we_o,
-    output reg[4:0] reg_waddr_o,
+    output reg[4:0]             reg1_raddr_o,
+    output reg                  reg1_re_o,
+    output reg[4:0]             reg2_raddr_o,
+    output reg                  reg2_re_o,
+    output reg                  reg_we_o,
+    output reg[4:0]             reg_waddr_o,
     output reg[`DATA_WIDTH-1:0] op1_o,
     output reg[`DATA_WIDTH-1:0] op2_o
 );
