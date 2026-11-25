@@ -74,11 +74,11 @@ $(TARGET_BIN): $(V_SRC) $(SIM_SRC)
 run: $(ISA_TEST_BIN) $(TARGET_BIN)
 	./$(TARGET_BIN) $(ISA_TEST_BIN)
 
-run_c: $(TARGET_BIN)
+run_c: build_c_fw $(TARGET_BIN)
 	@mkdir -p log
 	./$(TARGET_BIN) $(C_FW_BIN)
 
-coremark: $(TARGET_BIN)
+coremark: build_cm $(TARGET_BIN)
 	@mkdir -p log
 	./$(TARGET_BIN) $(COREMARK_BIN)
 

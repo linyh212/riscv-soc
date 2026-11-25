@@ -7,7 +7,6 @@ module dpram #(
     input wire                  clk_i,
     input wire                  rst_i,
     input wire                  ce_i,
-
     input wire                  we_i,
     input wire[3:0]             mem_op_i,
     /* verilator lint_off UNUSEDSIGNAL */
@@ -15,7 +14,6 @@ module dpram #(
     /* verilator lint_on UNUSEDSIGNAL */
     input wire[`DATA_WIDTH-1:0] data_i,
     output reg[`DATA_WIDTH-1:0] data_o,
-
     input wire                  inst_ce_i,
     /* verilator lint_off UNUSEDSIGNAL */
     input wire[`ADDR_WIDTH-1:0] pc_i,

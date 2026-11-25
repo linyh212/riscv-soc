@@ -19,7 +19,7 @@ module pc_reg (
     end
     always @(posedge clk_i) begin
         if(ce_o == 1'b0) begin
-            pc_o <= `ZERO;
+            pc_o <= `BOOT_ROM_ADDR;
         end else if(flush_jump_i | flush_int_i) begin
             pc_o <= new_pc_i;
         end else if(stall_i == `STOP) begin

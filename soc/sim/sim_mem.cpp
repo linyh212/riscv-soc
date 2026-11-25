@@ -5,6 +5,7 @@
 #include <iostream>
 #include "Vtest_top.h"
 #include "Vtest_top_dpram__R100000_RB14.h"
+#include "Vtest_top_boot_rom.h"
 #include "Vtest_top_regfile.h"
 
 // 將指定長度的位元組資料寫入 ROM 的起始位址
@@ -45,4 +46,21 @@ uint32_t sim_regs_read(Vtest_top_regfile* regs, uint32_t addr) {
     uint32_t v;
     regs->readRegister(addr, v);
     return v;
+}
+
+void sim_bootrom_load_bin(Vtest_top_boot_rom* bootrom, std::string fn) {
+    std::ifstream bpfs(fn, std::ios::binary | std::ios::ate);
+    if (!bpfs.is_open()) {
+        std::cerr << "Error opening bootrom binary: " << fn << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    std::streamsize f_length = bpfs.tellg();
+    char* buf = new char[f_length];
+    bpfs.seekg(0, std::ios::beg);
+    bpfs.read(buf, f_length);
+    bpfs.close();
+    for (size_t i = 0; i < static_cast<size_t>(f_length); i++) {
+        bootrom->writeByte(i, static_cast<uint8_t>(buf[i]));
+    }
+    delete[] buf;
 }

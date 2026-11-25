@@ -11,6 +11,7 @@
 #include "Vtest_top_test_top.h"
 
 void sim_mem_load_bin(Vtest_top_dpram__R100000_RB14* rom, Vtest_top_dpram__R100000_RB14* ram, std::string fn);
+void sim_bootrom_load_bin(Vtest_top_boot_rom* bootrom, std::string fn);
 
 namespace {
     constexpr const char* kDefaultBinPath = "soc/firmware/isa_tests/test.bin";
@@ -60,7 +61,8 @@ int main(int argc, char** argv) {
         top->trace(tfp.get(), 99);
         tfp->open("wave.vcd");
     }
-    // 載入測試二進位檔至記憶體
+    // 在 testbench.cpp 初始化階段（eval 迴圈開始前）：
+    sim_bootrom_load_bin(top->test_top->boot_rom0, "./soc/bootrom/bootrom.bin");
     sim_mem_load_bin(top->test_top->data_ram0, top->test_top->data_ram0, bin_file);
     // 系統重置 (Reset) 階段
     top->rst_i = 1;

@@ -14,6 +14,8 @@
 `define RAM_SIZE        65536
 `define RAM_ADDR_WIDTH  16
 
+`define BOOT_ROM_ADDR   32'h1000_0000
+
 // 2. General Constants & System Control Signals
 `define ZERO            32'h00000000
 `define ZERO_REG        5'b0

@@ -46,7 +46,15 @@ def run_isa_tests() -> None:
     print(f"{'Test Target':<40} {'Status':<15} {'Details'}")
     print("=" * 65)
     for bin_file in bin_files:
-        res = subprocess.run([str(tb_bin), str(bin_file)], capture_output=True, text=True)
+        # Firmware may write arbitrary bytes to the simulated console. Replace
+        # non-UTF-8 bytes so result detection still works across locales.
+        res = subprocess.run(
+            [str(tb_bin), str(bin_file)],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
         status, color, details = evaluate_output(res.stdout.strip())
         detail_str = f"  {details}" if details else ""
         print(f"{bin_file.name:<40} {color}{status:<12}{RESET}{detail_str}")

@@ -2,7 +2,7 @@
 
 module mem_wb (
     input wire                      clk_i,
-    input wire                      st_i,
+    input wire                      rst_i,
     input wire[`RADDR_WIDTH-1:0]    reg_waddr_i,
     input wire                      reg_we_i,
     input wire[`RDATA_WIDTH-1:0]    reg_wdata_i,

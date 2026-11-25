@@ -10,7 +10,7 @@ module test_top (
     output wire[`RDATA_WIDTH-1:0]   id_op2_o,
     output wire                     halt_o
 );
-    localparam int NrDevices = 4;
+    localparam int NrDevices = 5;
     localparam int NrHosts = 1;
     localparam int MemSize = 32'h100000;
     localparam int MemAddrWidth = 20;
@@ -20,7 +20,8 @@ module test_top (
     `define DEV_CONSOLE     1
     `define DEV_TIMER       2
     `define DEV_CLINT       3
-    
+    `define DEV_BOOTROM     4
+
     // --- System Bus & Memory Map ---
     wire                        host_req[NrHosts];
     /* verilator lint_off UNUSEDSIGNAL */
@@ -170,6 +171,10 @@ module test_top (
     wire                        interrupt_flush_o;
     wire[`DATA_WIDTH-1:0]       interrupt_new_pc_o;
 
+    // --- Boot ROM ---
+    wire[`DATA_WIDTH-1:0]       ram_inst_o;
+    wire[`DATA_WIDTH-1:0]       bootrom_inst_o;
+
     // --- Top-Level & System Status Outputs ---
     assign pc_o = pc_wire;
     assign halt_o = mem_halt_o | console_halt_o;
@@ -198,6 +203,12 @@ module test_top (
     assign cfg_device_addr_base[`DEV_CLINT] = 32'h02000000;
     assign cfg_device_addr_mask[`DEV_CLINT] = 32'hFFFF0000;
 
+    // --- Boot ROM ---
+    assign cfg_device_addr_base[`DEV_BOOTROM] = 32'h10000000;
+    assign cfg_device_addr_mask[`DEV_BOOTROM] = ~32'h00000FFF;
+    wire is_bootrom_if = ((rom_addr_i & 32'hFFFFF000) == 32'h10000000);
+    reg is_bootrom_if_q;
+
     always @(posedge clk_i) begin
         if (rst_i == 1'b1) begin
             ctrl_flush_jump_delay <= 1'b0;
@@ -205,7 +216,6 @@ module test_top (
             ctrl_flush_jump_delay <= ctrl_flush_jump_o;
         end
     end
-
     always @(posedge clk_i) begin
         if (rst_i == 1'b1) begin
             if_inst_addr_o <= `ZERO;
@@ -213,6 +223,14 @@ module test_top (
             if_inst_addr_o <= rom_addr_i;
         end
     end
+    always @(posedge clk_i) begin
+        if (rst_i == 1'b1) begin
+            is_bootrom_if_q <= 1'b1;
+        end else if (crtl_stall_o[0] == `NOSTOP) begin
+            is_bootrom_if_q <= is_bootrom_if;
+        end
+    end
+    assign if_inst_o = is_bootrom_if_q ? bootrom_inst_o : ram_inst_o;
 
     pc_reg pc_reg0 (
         .clk_i(clk_i),
@@ -511,9 +529,9 @@ module test_top (
         .data_i(device_wdata[`DEV_RAM]),
         .data_o(device_rdata[`DEV_RAM]),
         .mem_op_i(exe_mem_mem_op_o),
-        .inst_ce_i(ce_wire && (crtl_stall_o[0] == `NOSTOP)),
+        .inst_ce_i(ce_wire && (crtl_stall_o[0] == `NOSTOP) && !is_bootrom_if),
         .pc_i(rom_addr_i),
-        .inst_o(if_inst_o)
+        .inst_o(ram_inst_o)
     );
     console #(
         .LogName("./log/console.log")
@@ -546,5 +564,18 @@ module test_top (
         .data_o(device_rdata[`DEV_CLINT]),
         .timer_irq_o(clint_timer_irq),
         .software_irq_o(clint_software_irq)
+    );
+    boot_rom #(
+        .ROM_SIZE(4096),
+        .ROM_ADDR_WIDTH(12)
+    ) boot_rom0 (
+        .clk_i(clk_i),
+        .rst_i(rst_i),
+        .ce_i(device_req[`DEV_BOOTROM]),
+        .addr_i(device_addr[`DEV_BOOTROM]),
+        .data_o(device_rdata[`DEV_BOOTROM]),
+        .inst_ce_i(ce_wire && (crtl_stall_o[0] == `NOSTOP) && is_bootrom_if),
+        .pc_i(rom_addr_i),
+        .inst_o(bootrom_inst_o)
     );
 endmodule
