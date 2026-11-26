@@ -15,6 +15,7 @@ C_FW_DIR     = soc/firmware
 C_FW_BIN     = $(C_FW_DIR)/firmware.bin
 COREMARK_DIR = soc/coremark
 COREMARK_BIN = $(COREMARK_DIR)/core_main.bin
+PLIC_BIN     = $(C_FW_DIR)/plic_test.bin
 
 # --------------------------------------------------
 # Verilog Hardware Source and Include Paths
@@ -40,7 +41,7 @@ SIM_SRC  = $(wildcard soc/sim/*.cpp)
 # --------------------------------------------------
 # Phony Targets and Default Rules
 # --------------------------------------------------
-.PHONY: all run run_c coremark test wave clean build_c_fw build_cm
+.PHONY: all run run_c coremark test wave clean build_c_fw build_cm build_plic plic
 
 all: run
 
@@ -55,6 +56,9 @@ build_c_fw:
 
 build_cm:
 	$(MAKE) -C $(COREMARK_DIR)
+
+build_plic:
+	$(MAKE) -C $(C_FW_DIR) APP=plic_test
 
 # --------------------------------------------------
 # Verilator Hardware Translation and Compilation
@@ -85,6 +89,10 @@ coremark: build_cm $(TARGET_BIN)
 test: $(TARGET_BIN)
 	$(MAKE) -C soc/firmware/isa_tests
 	python3 soc/test_all_isa.py
+
+plic: build_plic $(TARGET_BIN)
+	@mkdir -p log
+	./$(TARGET_BIN) $(PLIC_BIN)
 
 # --------------------------------------------------
 # Waveform Viewing and Environment Cleanup

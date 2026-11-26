@@ -10,7 +10,7 @@ module test_top (
     output wire[`RDATA_WIDTH-1:0]   id_op2_o,
     output wire                     halt_o
 );
-    localparam int NrDevices = 5;
+    localparam int NrDevices = 6;
     localparam int NrHosts = 1;
     localparam int MemSize = 32'h100000;
     localparam int MemAddrWidth = 20;
@@ -21,6 +21,7 @@ module test_top (
     `define DEV_TIMER       2
     `define DEV_CLINT       3
     `define DEV_BOOTROM     4
+    `define DEV_PLIC        5
 
     // --- System Bus & Memory Map ---
     wire                        host_req[NrHosts];
@@ -171,10 +172,6 @@ module test_top (
     wire                        interrupt_flush_o;
     wire[`DATA_WIDTH-1:0]       interrupt_new_pc_o;
 
-    // --- Boot ROM ---
-    wire[`DATA_WIDTH-1:0]       ram_inst_o;
-    wire[`DATA_WIDTH-1:0]       bootrom_inst_o;
-
     // --- Top-Level & System Status Outputs ---
     assign pc_o = pc_wire;
     assign halt_o = mem_halt_o | console_halt_o;
@@ -208,6 +205,16 @@ module test_top (
     assign cfg_device_addr_mask[`DEV_BOOTROM] = ~32'h00000FFF;
     wire is_bootrom_if = ((rom_addr_i & 32'hFFFFF000) == 32'h10000000);
     reg is_bootrom_if_q;
+    wire[`DATA_WIDTH-1:0] ram_inst_o;
+    wire[`DATA_WIDTH-1:0] bootrom_inst_o;
+
+    // --- PLIC ---
+    assign cfg_device_addr_base[`DEV_PLIC] = 32'h0C000000;
+    assign cfg_device_addr_mask[`DEV_PLIC] = ~32'h003FFFFF;
+    wire plic_ext_irq;
+    wire[8:1] plic_irq_sources;
+    assign plic_irq_sources[1] = timer_irq;
+    assign plic_irq_sources[8:2] = 7'b0;
 
     always @(posedge clk_i) begin
         if (rst_i == 1'b1) begin
@@ -475,9 +482,9 @@ module test_top (
         .waddr_i(mem_wb_csr_waddr_o),
         .wdata_i(mem_wb_csr_rdata_o),
         .instret_incr_i(1'b0),
-        .irq_timer_i(timer_irq | clint_timer_irq),
+        .irq_timer_i(clint_timer_irq),
         .irq_software_i(clint_software_irq),
-        .irq_external_i(1'b0),
+        .irq_external_i(plic_ext_irq),
         .mstatus_ie_o(csr_mstatus_ie_o),
         .mie_external_o(csr_mie_external_o),
         .mie_timer_o(csr_mie_timer_o),
@@ -577,5 +584,18 @@ module test_top (
         .inst_ce_i(ce_wire && (crtl_stall_o[0] == `NOSTOP) && is_bootrom_if),
         .pc_i(rom_addr_i),
         .inst_o(bootrom_inst_o)
+    );
+    plic #(
+        .NUM_SOURCES(8)
+    ) plic0 (
+        .clk_i(clk_i),
+        .rst_i(rst_i),
+        .req_i(device_req[`DEV_PLIC]),
+        .we_i(device_we[`DEV_PLIC]),
+        .addr_i(device_addr[`DEV_PLIC]),
+        .wdata_i(device_wdata[`DEV_PLIC]),
+        .rdata_o(device_rdata[`DEV_PLIC]),
+        .irq_sources_i(plic_irq_sources),
+        .eip_o(plic_ext_irq)
     );
 endmodule
